@@ -2,9 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Annotated, Any
-
-import casbin
-from casbin.persist.adapters import FileAdapter
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -18,6 +15,7 @@ from backend.config_loader import (
     load_roles_4_users2global,
     load_userid_to_group_mapping,
 )
+from backend.casbin_service import build_enforcer, enforce
 from backend.routers.access_requests import create_access_requests_router
 from backend.routers.role_management import create_role_management_router
 
@@ -56,18 +54,10 @@ ACCESS_REQUESTS_PATH = BASE_DIR / "access_requests.yaml"
 APPLICATIONSERVICES = load_applicationservices(BASE_DIR)
 
 
-def build_enforcer() -> casbin.Enforcer:
-    base_dir = Path(__file__).parent
-    model_path = base_dir / "casbin_model.conf"
-    policy_path = base_dir / "casbin_policy.csv"
-
-    adapter = FileAdapter(str(policy_path))
-    e = casbin.Enforcer(str(model_path), adapter)
-    e.load_policy()
-    return e
-
-
-ENFORCER = build_enforcer()
+ENFORCER = build_enforcer(
+    model_path=BASE_DIR / "casbin_model.conf",
+    policy_path=BASE_DIR / "casbin_policy.csv",
+)
 
 app = FastAPI(title="Casbin RBAC Demo")
 
@@ -126,22 +116,15 @@ def authenticate_token(token: str) -> dict[str, Any]:
 CurrentUser = Annotated[dict[str, Any], Depends(lambda authorization=Header(default=None): authenticate_token(_parse_bearer(authorization) or ""))]
 
 
-def enforce(
+def enforce_request(
     user: dict[str, Any], obj: str, act: str, applicationservice: dict[str, Any] | None = None
 ) -> None:
-    applicationservice_ctx = applicationservice or {"id": ""}
-    ENFORCER.load_policy()
-    allowed = ENFORCER.enforce(user, obj, act, applicationservice_ctx)
-    if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"message": "Forbidden by RBAC", "roles": user.get("roles", []), "obj": obj, "act": act},
-        )
+    enforce(enforcer=ENFORCER, user=user, obj=obj, act=act, applicationservice=applicationservice)
 
 
 app.include_router(
     create_role_management_router(
-        enforce=lambda user, obj, act: enforce(user, obj, act),
+        enforce=lambda user, obj, act: enforce_request(user, obj, act),
         get_current_user=lambda authorization=Header(default=None): authenticate_token(
             _parse_bearer(authorization) or ""
         ),
@@ -156,7 +139,7 @@ app.include_router(
 
 app.include_router(
     create_access_requests_router(
-        enforce=lambda user, obj, act: enforce(user, obj, act),
+        enforce=lambda user, obj, act: enforce_request(user, obj, act),
         get_current_user=lambda authorization=Header(default=None): authenticate_token(
             _parse_bearer(authorization) or ""
         ),
@@ -193,25 +176,25 @@ def me(user: CurrentUser) -> dict[str, Any]:
 
 @app.get("/data")
 def read_data(user: CurrentUser) -> dict[str, Any]:
-    enforce(user, "/data", "GET")
+    enforce_request(user, "/data", "GET")
     return {"message": "You can read data", "user": user}
 
 
 @app.post("/data")
 def write_data(user: CurrentUser) -> dict[str, Any]:
-    enforce(user, "/data", "POST")
+    enforce_request(user, "/data", "POST")
     return {"message": "You can write data", "user": user}
 
 
 @app.get("/admin")
 def admin(user: CurrentUser) -> dict[str, Any]:
-    enforce(user, "/admin", "GET")
+    enforce_request(user, "/admin", "GET")
     return {"message": "Welcome to admin", "user": user}
 
 
 @app.get("/applicationservices/{applicationservice_id}")
 def get_applicationservice(applicationservice_id: str, user: CurrentUser) -> dict[str, Any]:
-    enforce(
+    enforce_request(
         user,
         f"/applicationservices/{applicationservice_id}",
         "GET",
@@ -225,7 +208,7 @@ def get_applicationservice(applicationservice_id: str, user: CurrentUser) -> dic
 
 @app.put("/applicationservices/{applicationservice_id}")
 def update_applicationservice(applicationservice_id: str, user: CurrentUser) -> dict[str, Any]:
-    enforce(
+    enforce_request(
         user,
         f"/applicationservices/{applicationservice_id}",
         "PUT",
@@ -238,7 +221,7 @@ def update_applicationservice(applicationservice_id: str, user: CurrentUser) -> 
 
 @app.delete("/applicationservices/{applicationservice_id}")
 def delete_applicationservice(applicationservice_id: str, user: CurrentUser) -> dict[str, Any]:
-    enforce(
+    enforce_request(
         user,
         f"/applicationservices/{applicationservice_id}",
         "DELETE",
