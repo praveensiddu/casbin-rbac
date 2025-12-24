@@ -1,0 +1,8 @@
+alice:
+  - ldap-admins
+bob:
+  - architecturesysgroup
+eve:
+  - architecturesysgroup1
+carol:
+  - architecturesysgroup2

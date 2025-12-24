@@ -1,0 +1,12 @@
+architecturesysgroup:
+  adc:
+  - recertify
+  - viewer
+  network:
+  - viewer
+architecturesysgroup1:
+  adc:
+  - recertify
+architecturesysgroup2:
+  workflow:
+  - recertify

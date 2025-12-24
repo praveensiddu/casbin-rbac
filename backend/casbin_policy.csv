@@ -1,0 +1,21 @@
+p, admin, /admin, GET, True
+p, admin, /data, (GET|POST), True
+p, admin, /applicationservices/*, (GET|PUT|DELETE), True
+p, admin, /role-management/*, (GET|POST), True
+
+p, admin, /access-requests/*, (GET|POST), True
+
+p, viewall, /data, GET, True
+p, viewall, /applicationservices/*, GET, True
+
+p, user, /data, GET, True
+
+p, user, /access-requests/applicationservices, GET, True
+p, user, /access-requests/request, POST, True
+p, user, /access-requests/me, GET, True
+
+p, recertify, /applicationservices/*, GET, True
+p, recertify, /applicationservices/*, PUT, True
+
+p, viewer, /data, GET, True
+p, viewer, /applicationservices/*, GET, True

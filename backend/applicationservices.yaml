@@ -1,0 +1,11 @@
+applicationservices:
+  - id: "tgw"
+    content: "ApplicationService tgw"
+  - id: "fi"
+    content: "ApplicationService fi"
+  - id: "workflow"
+    content: "ApplicationService workflow"
+  - id: "adc"
+    content: "ApplicationService adc"
+  - id: "network"
+    content: "ApplicationService network"

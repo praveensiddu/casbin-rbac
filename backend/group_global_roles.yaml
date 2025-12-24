@@ -1,0 +1,7 @@
+ldap-admins:
+  - admin
+psiddu:
+  - viewall
+gs:
+  - viewall
+  
