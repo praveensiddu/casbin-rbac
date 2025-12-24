@@ -10,8 +10,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-import yaml
 
+from backend.config_loader import (
+    load_applicationservices,
+    load_roles_4_group2applicationservice,
+    load_roles_4_groups2global,
+    load_roles_4_users2global,
+    load_userid_to_group_mapping,
+)
 from backend.routers.access_requests import create_access_requests_router
 from backend.routers.role_management import create_role_management_router
 
@@ -36,69 +42,18 @@ USERS: dict[str, dict[str, object]] = {
 }
 
 
-def _load_yaml(path: Path) -> dict[str, Any]:
-    if not path.exists():
-        return {}
-    data = yaml.safe_load(path.read_text())
-    return data or {}
-
-
-def _load_user_ldap_groups(base_dir: Path) -> dict[str, set[str]]:
-    raw = _load_yaml(base_dir / "userid_to_group_mapping.yaml")
-    return {str(user): set(map(str, groups or [])) for user, groups in raw.items()}
-
-
-def _load_group_global_roles(base_dir: Path) -> dict[str, set[str]]:
-    raw = _load_yaml(base_dir / "roles_4_groups2global.yaml")
-    return {str(group): set(map(str, roles or [])) for group, roles in raw.items()}
-
-
-def _load_user_global_roles(base_dir: Path) -> dict[str, set[str]]:
-    raw = _load_yaml(base_dir / "roles_4_users2global.yaml")
-    return {str(user): set(map(str, roles or [])) for user, roles in raw.items()}
-
-
-def _load_group_doc_roles(base_dir: Path) -> dict[str, dict[str, set[str]]]:
-    raw = _load_yaml(base_dir / "roles_4_group2applicationservice.yaml")
-    out: dict[str, dict[str, set[str]]] = {}
-    for group, doc_map in raw.items():
-        group_s = str(group)
-        out[group_s] = {}
-        if not doc_map:
-            continue
-        for doc_id, roles in doc_map.items():
-            out[group_s][str(doc_id)] = set(map(str, roles or []))
-    return out
-
-
-def _load_applicationservices(base_dir: Path) -> dict[str, dict[str, str]]:
-    raw = _load_yaml(base_dir / "applicationservices.yaml")
-    items = raw.get("applicationservices") or []
-    out: dict[str, dict[str, str]] = {}
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        app_id = item.get("id")
-        if app_id is None:
-            continue
-        app_id_s = str(app_id)
-        content = item.get("content")
-        out[app_id_s] = {"content": str(content) if content is not None else f"ApplicationService {app_id_s}"}
-    return out
-
-
 BASE_DIR = Path(__file__).parent
-USER_LDAP_GROUPS = _load_user_ldap_groups(BASE_DIR)
-LDAP_GROUP_GLOBAL_ROLES = _load_group_global_roles(BASE_DIR)
-LDAP_USER_GLOBAL_ROLES = _load_user_global_roles(BASE_DIR)
-LDAP_GROUP_DOC_ROLES = _load_group_doc_roles(BASE_DIR)
+USER_LDAP_GROUPS = load_userid_to_group_mapping(BASE_DIR)
+LDAP_GROUP_GLOBAL_ROLES = load_roles_4_groups2global(BASE_DIR)
+LDAP_USER_GLOBAL_ROLES = load_roles_4_users2global(BASE_DIR)
+LDAP_GROUP_DOC_ROLES = load_roles_4_group2applicationservice(BASE_DIR)
 
 GROUP_DOC_ROLES_PATH = BASE_DIR / "roles_4_group2applicationservice.yaml"
 GROUP_GLOBAL_ROLES_PATH = BASE_DIR / "roles_4_groups2global.yaml"
 
 ACCESS_REQUESTS_PATH = BASE_DIR / "access_requests.yaml"
 
-APPLICATIONSERVICES = _load_applicationservices(BASE_DIR)
+APPLICATIONSERVICES = load_applicationservices(BASE_DIR)
 
 
 def build_enforcer() -> casbin.Enforcer:
