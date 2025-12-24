@@ -44,22 +44,22 @@ def _load_yaml(path: Path) -> dict[str, Any]:
 
 
 def _load_user_ldap_groups(base_dir: Path) -> dict[str, set[str]]:
-    raw = _load_yaml(base_dir / "user_ldap_groups.yaml")
+    raw = _load_yaml(base_dir / "userid_to_group_mapping.yaml")
     return {str(user): set(map(str, groups or [])) for user, groups in raw.items()}
 
 
 def _load_group_global_roles(base_dir: Path) -> dict[str, set[str]]:
-    raw = _load_yaml(base_dir / "group_global_roles.yaml")
+    raw = _load_yaml(base_dir / "roles_4_groups2global.yaml")
     return {str(group): set(map(str, roles or [])) for group, roles in raw.items()}
 
 
 def _load_user_global_roles(base_dir: Path) -> dict[str, set[str]]:
-    raw = _load_yaml(base_dir / "user_global_roles.yaml")
+    raw = _load_yaml(base_dir / "roles_4_users2global.yaml")
     return {str(user): set(map(str, roles or [])) for user, roles in raw.items()}
 
 
 def _load_group_doc_roles(base_dir: Path) -> dict[str, dict[str, set[str]]]:
-    raw = _load_yaml(base_dir / "group_doc_roles.yaml")
+    raw = _load_yaml(base_dir / "roles_4_group2applicationservice.yaml")
     out: dict[str, dict[str, set[str]]] = {}
     for group, doc_map in raw.items():
         group_s = str(group)
@@ -93,8 +93,8 @@ LDAP_GROUP_GLOBAL_ROLES = _load_group_global_roles(BASE_DIR)
 LDAP_USER_GLOBAL_ROLES = _load_user_global_roles(BASE_DIR)
 LDAP_GROUP_DOC_ROLES = _load_group_doc_roles(BASE_DIR)
 
-GROUP_DOC_ROLES_PATH = BASE_DIR / "group_doc_roles.yaml"
-GROUP_GLOBAL_ROLES_PATH = BASE_DIR / "group_global_roles.yaml"
+GROUP_DOC_ROLES_PATH = BASE_DIR / "roles_4_group2applicationservice.yaml"
+GROUP_GLOBAL_ROLES_PATH = BASE_DIR / "roles_4_groups2global.yaml"
 
 ACCESS_REQUESTS_PATH = BASE_DIR / "access_requests.yaml"
 
