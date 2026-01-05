@@ -42,9 +42,9 @@ USERS: dict[str, dict[str, object]] = {
 
 BASE_DIR = Path(__file__).parent
 USER_LDAP_GROUPS = load_userid_to_group_mapping(BASE_DIR)
-LDAP_GROUP_GLOBAL_ROLES = load_roles_4_groups2global(BASE_DIR)
+roles4groups2global = load_roles_4_groups2global(BASE_DIR)
 LDAP_USER_GLOBAL_ROLES = load_roles_4_users2global(BASE_DIR)
-LDAP_GROUP_DOC_ROLES = load_roles_4_group2applicationservice(BASE_DIR)
+group2appsvc_roles = load_roles_4_group2applicationservice(BASE_DIR)
 
 GROUP_DOC_ROLES_PATH = BASE_DIR / "roles_4_group2applicationservice.yaml"
 GROUP_GLOBAL_ROLES_PATH = BASE_DIR / "roles_4_groups2global.yaml"
@@ -91,13 +91,13 @@ def authenticate_token(token: str) -> dict[str, Any]:
 
     global_roles: set[str] = set()
     for g in groups:
-        global_roles |= set(LDAP_GROUP_GLOBAL_ROLES.get(g, set()))
+        global_roles |= set(roles4groups2global.get(g, set()))
 
     global_roles |= set(LDAP_USER_GLOBAL_ROLES.get(token, set()))
 
     applicationservice_roles_acc: dict[str, set[str]] = {}
     for g in groups:
-        for applicationservice_id, roles_for_appsvc in LDAP_GROUP_DOC_ROLES.get(g, {}).items():
+        for applicationservice_id, roles_for_appsvc in group2appsvc_roles.get(g, {}).items():
             applicationservice_roles_acc.setdefault(applicationservice_id, set()).update(roles_for_appsvc)
 
     roles = sorted(list(global_roles | {"user"}))
@@ -131,8 +131,8 @@ app.include_router(
         group_doc_roles_path=GROUP_DOC_ROLES_PATH,
         group_global_roles_path=GROUP_GLOBAL_ROLES_PATH,
         user_ldap_groups=USER_LDAP_GROUPS,
-        ldap_group_global_roles=LDAP_GROUP_GLOBAL_ROLES,
-        ldap_group_doc_roles=LDAP_GROUP_DOC_ROLES,
+        roles4groups2global=roles4groups2global,
+        group2appsvc_roles=group2appsvc_roles,
         applicationservices=APPLICATIONSERVICES,
     )
 )

@@ -74,7 +74,7 @@ function App() {
   const [arMyRequests, setArMyRequests] = useState([]);
   const [arAllRequests, setArAllRequests] = useState([]);
 
-  const rmAppIds = useMemo(() => rmRows.map((r) => r.applicationservice_id), [rmRows]);
+  const rmAppIds = useMemo(() => rmRows.map((r) => r.appsvc_id), [rmRows]);
 
   const isAuthed = useMemo(() => Boolean(token), [token]);
   const isAdmin = useMemo(() => roles.includes('admin'), [roles]);
@@ -176,7 +176,7 @@ function App() {
       setRmRows(rowsResp.rows || []);
       setRmViewallAccess(globalRolesResp.viewall_access || []);
       if (!rmGroup && (groupsResp.groups || []).length) setRmGroup((groupsResp.groups || [])[0]);
-      if (!rmAppId && (rowsResp.rows || []).length) setRmAppId((rowsResp.rows || [])[0].applicationservice_id);
+      if (!rmAppId && (rowsResp.rows || []).length) setRmAppId((rowsResp.rows || [])[0].appsvc_id);
       if (!rmViewallGroup && (groupsResp.groups || []).length) setRmViewallGroup((groupsResp.groups || [])[0]);
     } catch (err) {
       setError(err.message);
@@ -189,7 +189,7 @@ function App() {
       await apiRequest('/role-management/assign', {
         method: 'POST',
         token,
-        body: { group: rmGroup, applicationservice_id: rmAppId, role: rmRole },
+        body: { group: rmGroup, appsvc_id: rmAppId, role: rmRole },
       });
       await loadRoleManagement();
     } catch (err) {
@@ -203,7 +203,7 @@ function App() {
       await apiRequest('/role-management/unassign', {
         method: 'POST',
         token,
-        body: { group, applicationservice_id: applicationserviceId, role },
+        body: { group, appsvc_id: applicationserviceId, role },
       });
       await loadRoleManagement();
     } catch (err) {
@@ -459,18 +459,18 @@ function App() {
                     </thead>
                     <tbody>
                       {rmRows.map((row) => (
-                        <tr key={row.applicationservice_id}>
-                          <td>{row.applicationservice_id}</td>
+                        <tr key={row.appsvc_id}>
+                          <td>{row.appsvc_id}</td>
                           <td>
                             {(row.viewer_access || []).length ? (
                               <div className="chips">
                                 {row.viewer_access.map((g) => (
-                                  <span key={`${row.applicationservice_id}-viewer-${g}`} className="chip">
+                                  <span key={`${row.appsvc_id}-viewer-${g}`} className="chip">
                                     {g}
                                     <button
                                       type="button"
                                       className="chipBtn"
-                                      onClick={() => unassignRole(g, row.applicationservice_id, 'viewer')}
+                                      onClick={() => unassignRole(g, row.appsvc_id, 'viewer')}
                                     >
                                       x
                                     </button>
@@ -485,12 +485,12 @@ function App() {
                             {(row.recertify_access || []).length ? (
                               <div className="chips">
                                 {row.recertify_access.map((g) => (
-                                  <span key={`${row.applicationservice_id}-recertify-${g}`} className="chip">
+                                  <span key={`${row.appsvc_id}-recertify-${g}`} className="chip">
                                     {g}
                                     <button
                                       type="button"
                                       className="chipBtn"
-                                      onClick={() => unassignRole(g, row.applicationservice_id, 'recertify')}
+                                      onClick={() => unassignRole(g, row.appsvc_id, 'recertify')}
                                     >
                                       x
                                     </button>
