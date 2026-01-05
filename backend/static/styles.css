@@ -151,3 +151,10 @@ select {
   background: #ffffff;
   color: #0f172a;
 }
+
+.divider {
+  width: 100%;
+  height: 1px;
+  background: #e2e8f0;
+  margin: 14px 0;
+}

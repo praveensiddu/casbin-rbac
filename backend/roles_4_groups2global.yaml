@@ -1,7 +1,12 @@
-ldap-admins:
-  - admin
-psiddu:
-  - viewall
+firewallsquad:
+- viewall
+globalsecurity:
+- viewall
+group1:
+- viewall
 gs:
-  - viewall
-  
+- viewall
+ldap-admins:
+- admin
+psiddu:
+- viewall

@@ -387,32 +387,8 @@ function App() {
                   <button type="button" onClick={loadRoleManagement}>Refresh</button>
                 </div>
 
-                <div className="row small muted" style={{ marginTop: 10 }}>
-                  <div style={{ flex: 1 }}>applicationservice</div>
-                  <div style={{ flex: 1 }}>role</div>
-                  <div style={{ flex: 1 }}>User/group</div>
-                  <div style={{ width: 60 }} />
-                </div>
-
-                <div className="row" style={{ marginTop: 4 }}>
-                  <select style={{ flex: 1 }} value={rmAppId} onChange={(e) => setRmAppId(e.target.value)}>
-                    {rmAppIds.map((id) => (
-                      <option key={id} value={id}>{id}</option>
-                    ))}
-                  </select>
-
-                  <select style={{ flex: 1 }} value={rmRole} onChange={(e) => setRmRole(e.target.value)}>
-                    <option value="viewer">viewer</option>
-                    <option value="recertify">recertify</option>
-                  </select>
-
-                  <input style={{ flex: 1 }} value={rmGroup} onChange={(e) => setRmGroup(e.target.value)} placeholder="group" />
-
-                  <button style={{ width: 60 }} type="button" onClick={assignRole} disabled={!rmGroup || !rmAppId}>Add</button>
-                </div>
-
                 <div className="row" style={{ marginTop: 14 }}>
-                  <div style={{ minWidth: 180 }}><b>viewall access</b></div>
+                  <div style={{ minWidth: 180 }}><b>grant viewall access</b></div>
                   <div className="chips" style={{ flex: 1 }}>
                     {(rmViewallAccess || []).length ? (
                       rmViewallAccess.map((g) => (
@@ -440,6 +416,36 @@ function App() {
                     placeholder="group"
                   />
                   <button style={{ width: 60 }} type="button" onClick={assignViewall} disabled={!rmViewallGroup}>Add</button>
+                </div>
+
+                <div className="divider" />
+
+                <div className="row" style={{ marginTop: 6 }}>
+                  <div><b>Grant applicationservice specific access</b></div>
+                </div>
+
+                <div className="row small muted" style={{ marginTop: 10 }}>
+                  <div style={{ flex: 1 }}>applicationservice</div>
+                  <div style={{ flex: 1 }}>role</div>
+                  <div style={{ flex: 1 }}>User/group</div>
+                  <div style={{ width: 60 }} />
+                </div>
+
+                <div className="row" style={{ marginTop: 4 }}>
+                  <select style={{ flex: 1 }} value={rmAppId} onChange={(e) => setRmAppId(e.target.value)}>
+                    {rmAppIds.map((id) => (
+                      <option key={id} value={id}>{id}</option>
+                    ))}
+                  </select>
+
+                  <select style={{ flex: 1 }} value={rmRole} onChange={(e) => setRmRole(e.target.value)}>
+                    <option value="viewer">viewer</option>
+                    <option value="recertify">recertify</option>
+                  </select>
+
+                  <input style={{ flex: 1 }} value={rmGroup} onChange={(e) => setRmGroup(e.target.value)} placeholder="group" />
+
+                  <button style={{ width: 60 }} type="button" onClick={assignRole} disabled={!rmGroup || !rmAppId}>Add</button>
                 </div>
 
                 <div style={{ overflowX: 'auto', marginTop: 12 }}>
