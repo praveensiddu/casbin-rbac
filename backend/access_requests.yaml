@@ -29,3 +29,11 @@ requests:
   role: recertify
   status: pending
   username: alice
+- applicationservice_id: tgw
+  created_at: '2026-01-06T15:10:39.933545+00:00'
+  group: firewall-recert
+  id: a8bdc045-2408-4631-a247-fccf6938e4d4
+  requested_by: bob
+  role: viewer
+  status: pending
+  username: bob

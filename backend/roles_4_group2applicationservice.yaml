@@ -12,3 +12,8 @@ architecturesysgroup2:
 architecturesysgroup3:
   fi:
   - recertify
+firewall-recert:
+  adc:
+  - viewer
+  tgw:
+  - viewer

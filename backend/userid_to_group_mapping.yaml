@@ -1,11 +1,15 @@
 alice:
 - ldap-admins
+- tgwgrouop
 - viewallgroup
 bob:
 - architecturesysgroup
+- firewall-recert
 carol:
 - architecturesysgroup2
 eve:
 - architecturesysgroup1
 john:
 - architecturesysgroup3
+stong:
+- firewall-recert
