@@ -20,6 +20,7 @@ from backend.casbin_service import build_enforcer, enforce
 from backend.routers.access_requests import create_access_requests_router
 from backend.routers.apps import create_apps_router
 from backend.routers.role_management import create_role_management_router
+from backend.routers.user_groups import create_user_groups_router
 
 
 class LoginRequest(BaseModel):
@@ -161,6 +162,15 @@ app.include_router(
     )
 )
 
+app.include_router(
+    create_user_groups_router(
+        enforce=lambda user, obj, act: enforce_request(user, obj, act),
+        get_current_user_context=get_current_user_context,
+        user_ldap_groups=USER_LDAP_GROUPS,
+        userid_to_group_mapping_path=USERID_TO_GROUP_MAPPING_PATH,
+    )
+)
+
 
 @app.get("/")
 def home() -> FileResponse:
@@ -181,62 +191,3 @@ def login(payload: LoginRequest) -> LoginResponse:
 @app.get("/me")
 def me(user: CurrentUser) -> dict[str, Any]:
     return user
-
-
-class UserGroupAdd(BaseModel):
-    user_id: str
-    group: str
-
-
-class UserGroupRemove(BaseModel):
-    user_id: str
-    group: str
-
-
-def _write_userid_to_group_mapping() -> None:
-    payload: dict[str, list[str]] = {
-        user_id: sorted(list(groups)) for user_id, groups in USER_LDAP_GROUPS.items()
-    }
-    USERID_TO_GROUP_MAPPING_PATH.write_text(yaml.safe_dump(payload, sort_keys=True))
-
-
-@app.get("/user-groups")
-def list_user_groups(user: CurrentUser) -> dict[str, Any]:
-    enforce_request(user, "/user-groups", "GET")
-    rows: list[dict[str, Any]] = []
-    for user_id in sorted(list(USER_LDAP_GROUPS.keys())):
-        rows.append({"user_id": user_id, "groups": sorted(list(USER_LDAP_GROUPS.get(user_id, set())))})
-    return {"rows": rows}
-
-
-@app.post("/user-groups/add")
-def add_user_group(payload: UserGroupAdd, user: CurrentUser) -> dict[str, Any]:
-    enforce_request(user, "/user-groups/add", "POST")
-    user_id = payload.user_id.strip()
-    group = payload.group.strip()
-    if not user_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="user_id is required")
-    if not group:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="group is required")
-
-    USER_LDAP_GROUPS.setdefault(user_id, set()).add(group)
-    _write_userid_to_group_mapping()
-    return {"status": "ok"}
-
-
-@app.post("/user-groups/remove")
-def remove_user_group(payload: UserGroupRemove, user: CurrentUser) -> dict[str, Any]:
-    enforce_request(user, "/user-groups/remove", "POST")
-    user_id = payload.user_id.strip()
-    group = payload.group.strip()
-    if not user_id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="user_id is required")
-    if not group:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="group is required")
-
-    if user_id in USER_LDAP_GROUPS:
-        USER_LDAP_GROUPS[user_id].discard(group)
-        if not USER_LDAP_GROUPS[user_id]:
-            USER_LDAP_GROUPS.pop(user_id, None)
-    _write_userid_to_group_mapping()
-    return {"status": "ok"}
