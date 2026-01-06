@@ -35,7 +35,7 @@ The backend uses a Casbin RBAC model with `keyMatch` + `regexMatch`.
 
 ## ABAC: subset of applicationservices
 
-For `/applicationservices/{applicationservice_id}` the backend also uses ABAC:
+For `/apps/{applicationservice_id}` the backend also uses ABAC:
 
 - `viewer` and `recertify` are applicationservice-scoped roles: access is granted only if the user has that role for the specific `applicationservice_id`.
 - `viewall` is a global role that grants view access (GET) to all applicationservices.
@@ -56,7 +56,7 @@ ApplicationServices are loaded from:
 
 - `backend/applicationservices.yaml`
 
-- `admin` can GET `/admin`, GET/POST `/data`, and GET/PUT/DELETE `/applicationservices/*`
-- `viewall` can GET `/data` and GET `/applicationservices/*`
-- `recertify` can GET/PUT `/applicationservices/*` (only for applicationservices where they have recertify)
-- `viewer` can GET `/applicationservices/*` (only for applicationservices where they have viewer)
+- `admin` can GET `/admin`, GET/POST `/data`, and GET/PUT/DELETE `/apps/*`
+- `viewall` can GET `/data` and GET `/apps/*`
+- `recertify` can GET/PUT `/apps/*` (only for applicationservices where they have recertify)
+- `viewer` can GET `/apps/*` (only for applicationservices where they have viewer)

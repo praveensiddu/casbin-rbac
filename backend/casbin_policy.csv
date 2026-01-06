@@ -2,19 +2,19 @@
 # Format (5 columns): ptype, sub, obj, act, cond
 # - ptype: policy type (e.g. 'p')
 # - sub: subject (role name in this demo, e.g. admin/viewall/user/viewer/recertify)
-# - obj: object/resource path pattern (e.g. /applicationservices/*)
+# - obj: object/resource path pattern (e.g. /apps/*)
 # - act: action/method regex (e.g. GET or (GET|POST))
 # - cond: Python expression evaluated by Casbin (simpleeval); use True/False (not true/false)
 
 p, admin, /admin, GET, True
 p, admin, /data, (GET|POST), True
-p, admin, /applicationservices/*, (GET|PUT|DELETE), True
+p, admin, /apps/*, (GET|PUT|DELETE), True
 p, admin, /role-management/*, (GET|POST), True
 
 p, admin, /access-requests/*, (GET|POST), True
 
 p, viewall, /data, GET, True
-p, viewall, /applicationservices/*, GET, True
+p, viewall, /apps/*, GET, True
 
 p, user, /data, GET, True
 
@@ -22,8 +22,8 @@ p, user, /access-requests/applicationservices, GET, True
 p, user, /access-requests/request, POST, True
 p, user, /access-requests/me, GET, True
 
-p, recertify, /applicationservices/*, GET, True
-p, recertify, /applicationservices/*, PUT, True
+p, recertify, /apps/*, GET, True
+p, recertify, /apps/*, PUT, True
 
 p, viewer, /data, GET, True
-p, viewer, /applicationservices/*, GET, True
+p, viewer, /apps/*, GET, True

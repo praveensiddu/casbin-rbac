@@ -1,10 +1,10 @@
 const { useMemo, useState } = React;
 
-async function login(username, password) {
+async function login(username) {
   const res = await fetch(`${window.API_URL}/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -50,14 +50,15 @@ function Section({ title, children }) {
 }
 
 function App() {
-  const [username, setUsername] = useState('alice');
-  const [password, setPassword] = useState('alice');
   const [token, setToken] = useState('');
   const [groups, setGroups] = useState([]);
   const [roles, setRoles] = useState([]);
   const [output, setOutput] = useState('');
   const [error, setError] = useState('');
   const [tab, setTab] = useState('demo');
+
+  const userIds = useMemo(() => ['alice', 'bob', 'eve', 'carol'], []);
+  const [selectedUserId, setSelectedUserId] = useState('alice');
 
   const [rmRows, setRmRows] = useState([]);
   const [rmGroups, setRmGroups] = useState([]);
@@ -71,6 +72,7 @@ function App() {
   const [arRows, setArRows] = useState([]);
   const [arAppId, setArAppId] = useState('');
   const [arRole, setArRole] = useState('viewer');
+  const [arGroup, setArGroup] = useState('');
   const [arMyRequests, setArMyRequests] = useState([]);
   const [arAllRequests, setArAllRequests] = useState([]);
 
@@ -79,12 +81,11 @@ function App() {
   const isAuthed = useMemo(() => Boolean(token), [token]);
   const isAdmin = useMemo(() => roles.includes('admin'), [roles]);
 
-  async function onLogin(e) {
-    e.preventDefault();
+  async function onLogin() {
     setError('');
     setOutput('');
     try {
-      const data = await login(username, password);
+      const data = await login(selectedUserId);
       setToken(data.access_token);
       setGroups(data.groups || []);
       setRoles(data.roles || []);
@@ -156,7 +157,7 @@ function App() {
       await apiRequest('/access-requests/request', {
         method: 'POST',
         token,
-        body: { applicationservice_id: arAppId, role: arRole },
+        body: { applicationservice_id: arAppId, role: arRole, group: arGroup },
       });
       await loadAccessRequests();
     } catch (err) {
@@ -218,12 +219,14 @@ function App() {
     setOutput('');
     setError('');
     setTab('demo');
+    setSelectedUserId('alice');
     setRmRows([]);
     setRmGroups([]);
     setRmGroup('');
     setArRows([]);
     setArAppId('');
     setArRole('viewer');
+    setArGroup('');
     setArMyRequests([]);
     setArAllRequests([]);
   }
@@ -232,15 +235,18 @@ function App() {
     <div className="page">
       <div className="card">
         <div className="title">Casbin RBAC Demo (FastAPI + React)</div>
-        <div className="subtitle">Users are mapped to LDAP groups; roles come from groups (password equals username)</div>
+        <div className="subtitle">Users are mapped to LDAP groups; roles come from groups (demo login is a userId selector)</div>
 
         <Section title="Login">
-          <form className="row" onSubmit={onLogin}>
-            <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" />
-            <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="password" type="password" />
-            <button type="submit">Login</button>
+          <div className="row">
+            <select value={selectedUserId} onChange={(e) => setSelectedUserId(e.target.value)} disabled={isAuthed}>
+              {userIds.map((u) => (
+                <option key={u} value={u}>{u}</option>
+              ))}
+            </select>
+            <button type="button" onClick={onLogin} disabled={isAuthed}>Login</button>
             <button type="button" onClick={logout} disabled={!isAuthed}>Logout</button>
-          </form>
+          </div>
           <div className="row small">
             <div><b>Token:</b> {token || '-'}</div>
             <div><b>Groups:</b> {groups.length ? groups.join(', ') : '-'}</div>
@@ -248,31 +254,38 @@ function App() {
           </div>
         </Section>
 
-        <Section title="Tabs">
-          <div className="row">
-            <button type="button" disabled={!isAuthed} onClick={() => setTab('demo')}>Demo</button>
-            <button
-              type="button"
-              disabled={!isAuthed}
-              onClick={async () => {
-                setTab('roles');
-                if (isAuthed) await loadRoleManagement();
-              }}
-            >
-              Role Management
-            </button>
-            <button
-              type="button"
-              disabled={!isAuthed}
-              onClick={async () => {
-                setTab('requests');
-                if (isAuthed) await loadAccessRequests();
-              }}
-            >
-              Access Requests
-            </button>
-          </div>
-        </Section>
+        <div className="tabs">
+          <button
+            type="button"
+            className={`tab ${tab === 'demo' ? 'active' : ''}`}
+            disabled={!isAuthed}
+            onClick={() => setTab('demo')}
+          >
+            Demo
+          </button>
+          <button
+            type="button"
+            className={`tab ${tab === 'roles' ? 'active' : ''}`}
+            disabled={!isAuthed}
+            onClick={async () => {
+              setTab('roles');
+              if (isAuthed) await loadRoleManagement();
+            }}
+          >
+            Role Management
+          </button>
+          <button
+            type="button"
+            className={`tab ${tab === 'requests' ? 'active' : ''}`}
+            disabled={!isAuthed}
+            onClick={async () => {
+              setTab('requests');
+              if (isAuthed) await loadAccessRequests();
+            }}
+          >
+            Access Requests
+          </button>
+        </div>
 
         {tab === 'demo' ? (
           <Section title="Try endpoints">
@@ -281,9 +294,9 @@ function App() {
               <button disabled={!isAuthed} onClick={() => callEndpoint('/data', 'GET')}>GET /data</button>
               <button disabled={!isAuthed} onClick={() => callEndpoint('/data', 'POST')}>POST /data</button>
               <button disabled={!isAuthed} onClick={() => callEndpoint('/admin', 'GET')}>GET /admin</button>
-              <button disabled={!isAuthed} onClick={() => callEndpoint('/applicationservices/network', 'GET')}>GET /applicationservices/network</button>
-              <button disabled={!isAuthed} onClick={() => callEndpoint('/applicationservices/network', 'PUT')}>PUT /applicationservices/network</button>
-              <button disabled={!isAuthed} onClick={() => callEndpoint('/applicationservices/network', 'DELETE')}>DELETE /applicationservices/network</button>
+              <button disabled={!isAuthed} onClick={() => callEndpoint('/apps/network', 'GET')}>GET /apps/network</button>
+              <button disabled={!isAuthed} onClick={() => callEndpoint('/apps/network', 'PUT')}>PUT /apps/network</button>
+              <button disabled={!isAuthed} onClick={() => callEndpoint('/apps/network', 'DELETE')}>DELETE /apps/network</button>
             </div>
           </Section>
         ) : null}
@@ -308,6 +321,13 @@ function App() {
                 <option value="recertify">recertify</option>
               </select>
 
+              <input
+                style={{ flex: 1, minWidth: 220 }}
+                value={arGroup}
+                onChange={(e) => setArGroup(e.target.value)}
+                placeholder="group"
+              />
+
               <button style={{ width: 80 }} type="button" onClick={requestAccess} disabled={!arAppId}>Request</button>
             </div>
 
@@ -317,6 +337,7 @@ function App() {
                 <thead>
                   <tr>
                     <th>Created</th>
+                    <th>Group</th>
                     <th>ApplicationService</th>
                     <th>Role</th>
                     <th>Status</th>
@@ -327,6 +348,7 @@ function App() {
                     arMyRequests.map((r) => (
                       <tr key={r.id}>
                         <td>{r.created_at || '-'}</td>
+                        <td>{r.group || '-'}</td>
                         <td>{r.applicationservice_id}</td>
                         <td>{r.role}</td>
                         <td>{r.status}</td>
@@ -334,7 +356,7 @@ function App() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="4"><span className="muted">-</span></td>
+                      <td colSpan="5"><span className="muted">-</span></td>
                     </tr>
                   )}
                 </tbody>
@@ -349,6 +371,7 @@ function App() {
                     <tr>
                       <th>Created</th>
                       <th>User</th>
+                      <th>Group</th>
                       <th>ApplicationService</th>
                       <th>Role</th>
                       <th>Status</th>
@@ -359,7 +382,8 @@ function App() {
                       arAllRequests.map((r) => (
                         <tr key={r.id}>
                           <td>{r.created_at || '-'}</td>
-                          <td>{r.username || '-'}</td>
+                          <td>{r.requested_by || r.username || '-'}</td>
+                          <td>{r.group || '-'}</td>
                           <td>{r.applicationservice_id}</td>
                           <td>{r.role}</td>
                           <td>{r.status}</td>
@@ -367,7 +391,7 @@ function App() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="5"><span className="muted">-</span></td>
+                        <td colSpan="6"><span className="muted">-</span></td>
                       </tr>
                     )}
                   </tbody>

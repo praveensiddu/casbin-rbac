@@ -13,6 +13,7 @@ from pydantic import BaseModel
 class AccessRequestCreate(BaseModel):
     applicationservice_id: str
     role: str
+    group: str
 
 
 def create_access_requests_router(
@@ -60,12 +61,19 @@ def create_access_requests_router(
         if app_id not in applicationservices:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ApplicationService not found")
 
+        group = payload.group.strip()
+        if not group:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Group is required")
+
         requests = _read_requests()
+        requested_by = str(user.get("username", ""))
         req = {
             "id": str(uuid4()),
-            "username": str(user.get("username", "")),
+            "requested_by": requested_by,
+            "username": requested_by,
             "applicationservice_id": app_id,
             "role": role,
+            "group": group,
             "status": "pending",
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
@@ -76,8 +84,12 @@ def create_access_requests_router(
     @router.get("/access-requests/me")
     def my_requests(user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
         enforce(user, "/access-requests/me", "GET")
-        username = str(user.get("username", ""))
-        mine = [r for r in _read_requests() if str(r.get("username", "")) == username]
+        requested_by = str(user.get("username", ""))
+        mine = [
+            r
+            for r in _read_requests()
+            if str(r.get("requested_by") or r.get("username") or "") == requested_by
+        ]
         mine.sort(key=lambda r: str(r.get("created_at", "")), reverse=True)
         return {"requests": mine}
 

@@ -43,6 +43,30 @@
   margin-bottom: 10px;
 }
 
+.tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.tab {
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-bottom: none;
+  background: #f8fafc;
+  color: #0f172a;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+
+.tab.active {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  font-weight: 700;
+}
+
 .row {
   display: flex;
   gap: 10px;
@@ -69,6 +93,15 @@ button {
   color: white;
   border-radius: 10px;
   cursor: pointer;
+}
+
+button.tab {
+  cursor: pointer;
+}
+
+button.tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 button:disabled {

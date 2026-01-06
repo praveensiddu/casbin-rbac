@@ -22,7 +22,6 @@ from backend.routers.role_management import create_role_management_router
 
 class LoginRequest(BaseModel):
     username: str
-    password: str
 
 
 class LoginResponse(BaseModel):
@@ -32,12 +31,7 @@ class LoginResponse(BaseModel):
     roles: list[str]
 
 
-USERS: dict[str, dict[str, object]] = {
-    "alice": {"password": "alice"},
-    "bob": {"password": "bob"},
-    "eve": {"password": "eve"},
-    "carol": {"password": "carol"},
-}
+USERS: set[str] = {"alice", "bob", "eve", "carol"}
 
 
 BASE_DIR = Path(__file__).parent
@@ -82,18 +76,17 @@ def _parse_bearer(authorization: str | None) -> str | None:
     return None
 
 
-def authenticate_token(token: str) -> dict[str, Any]:
-    user = USERS.get(token)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+def get_user_context(user_id: str) -> dict[str, Any]:
+    if user_id not in USERS:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user")
 
-    groups = set(USER_LDAP_GROUPS.get(token, set()))
+    groups = set(USER_LDAP_GROUPS.get(user_id, set()))
 
     global_roles: set[str] = set()
     for g in groups:
         global_roles |= set(roles4groups2global.get(g, set()))
 
-    global_roles |= set(LDAP_USER_GLOBAL_ROLES.get(token, set()))
+    global_roles |= set(LDAP_USER_GLOBAL_ROLES.get(user_id, set()))
 
     applicationservice_roles_acc: dict[str, set[str]] = {}
     for g in groups:
@@ -106,14 +99,21 @@ def authenticate_token(token: str) -> dict[str, Any]:
     }
 
     return {
-        "username": token,
+        "username": user_id,
         "groups": sorted(list(groups)),
         "roles": roles,
         "applicationservice_roles": applicationservice_roles,
     }
 
 
-CurrentUser = Annotated[dict[str, Any], Depends(lambda authorization=Header(default=None): authenticate_token(_parse_bearer(authorization) or ""))]
+def get_current_user(authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    user_id = _parse_bearer(authorization)
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token")
+    return get_user_context(user_id)
+
+
+CurrentUser = Annotated[dict[str, Any], Depends(get_current_user)]
 
 
 def enforce_request(
@@ -125,9 +125,7 @@ def enforce_request(
 app.include_router(
     create_role_management_router(
         enforce=lambda user, obj, act: enforce_request(user, obj, act),
-        get_current_user=lambda authorization=Header(default=None): authenticate_token(
-            _parse_bearer(authorization) or ""
-        ),
+        get_current_user=get_current_user,
         group_doc_roles_path=GROUP_DOC_ROLES_PATH,
         group_global_roles_path=GROUP_GLOBAL_ROLES_PATH,
         user_ldap_groups=USER_LDAP_GROUPS,
@@ -140,9 +138,7 @@ app.include_router(
 app.include_router(
     create_access_requests_router(
         enforce=lambda user, obj, act: enforce_request(user, obj, act),
-        get_current_user=lambda authorization=Header(default=None): authenticate_token(
-            _parse_bearer(authorization) or ""
-        ),
+        get_current_user=get_current_user,
         access_requests_path=ACCESS_REQUESTS_PATH,
         applicationservices=APPLICATIONSERVICES,
     )
@@ -161,11 +157,7 @@ def health() -> dict[str, str]:
 
 @app.post("/login", response_model=LoginResponse)
 def login(payload: LoginRequest) -> LoginResponse:
-    user = USERS.get(payload.username)
-    if not user or user["password"] != payload.password:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username/password")
-
-    ctx = authenticate_token(payload.username)
+    ctx = get_user_context(payload.username)
     return LoginResponse(access_token=payload.username, groups=ctx["groups"], roles=ctx["roles"])
 
 
@@ -192,11 +184,11 @@ def admin(user: CurrentUser) -> dict[str, Any]:
     return {"message": "Welcome to admin", "user": user}
 
 
-@app.get("/applicationservices/{applicationservice_id}")
+@app.get("/apps/{applicationservice_id}")
 def get_applicationservice(applicationservice_id: str, user: CurrentUser) -> dict[str, Any]:
     enforce_request(
         user,
-        f"/applicationservices/{applicationservice_id}",
+        f"/apps/{applicationservice_id}",
         "GET",
         applicationservice={"id": applicationservice_id},
     )
@@ -206,11 +198,11 @@ def get_applicationservice(applicationservice_id: str, user: CurrentUser) -> dic
     return {"applicationservice_id": applicationservice_id, "content": applicationservice["content"], "user": user}
 
 
-@app.put("/applicationservices/{applicationservice_id}")
+@app.put("/apps/{applicationservice_id}")
 def update_applicationservice(applicationservice_id: str, user: CurrentUser) -> dict[str, Any]:
     enforce_request(
         user,
-        f"/applicationservices/{applicationservice_id}",
+        f"/apps/{applicationservice_id}",
         "PUT",
         applicationservice={"id": applicationservice_id},
     )
@@ -219,11 +211,11 @@ def update_applicationservice(applicationservice_id: str, user: CurrentUser) -> 
     return {"applicationservice_id": applicationservice_id, "message": "Updated", "user": user}
 
 
-@app.delete("/applicationservices/{applicationservice_id}")
+@app.delete("/apps/{applicationservice_id}")
 def delete_applicationservice(applicationservice_id: str, user: CurrentUser) -> dict[str, Any]:
     enforce_request(
         user,
-        f"/applicationservices/{applicationservice_id}",
+        f"/apps/{applicationservice_id}",
         "DELETE",
         applicationservice={"id": applicationservice_id},
     )
