@@ -7,7 +7,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from uuid import uuid4
 import yaml
 
 from backend.config_loader import (
@@ -19,6 +18,7 @@ from backend.config_loader import (
 )
 from backend.casbin_service import build_enforcer, enforce
 from backend.routers.access_requests import create_access_requests_router
+from backend.routers.apps import create_apps_router
 from backend.routers.role_management import create_role_management_router
 
 
@@ -150,6 +150,17 @@ app.include_router(
     )
 )
 
+app.include_router(
+    create_apps_router(
+        enforce=lambda user, obj, act, applicationservice: enforce_request(
+            user, obj, act, applicationservice=applicationservice
+        ),
+        get_current_user=get_current_user,
+        applicationservices=APPLICATIONSERVICES,
+        app_flows=APP_FLOWS,
+    )
+)
+
 
 @app.get("/")
 def home() -> FileResponse:
@@ -170,20 +181,6 @@ def login(payload: LoginRequest) -> LoginResponse:
 @app.get("/me")
 def me(user: CurrentUser) -> dict[str, Any]:
     return user
-
-
-@app.get("/apps")
-def list_apps(user: CurrentUser) -> dict[str, Any]:
-    enforce_request(user, "/apps", "GET")
-    rows: list[dict[str, Any]] = []
-    for applicationservice_id in sorted(list(APPLICATIONSERVICES.keys())):
-        rows.append(
-            {
-                "applicationservice_id": applicationservice_id,
-                "content": APPLICATIONSERVICES[applicationservice_id].get("content", ""),
-            }
-        )
-    return {"rows": rows}
 
 
 class UserGroupAdd(BaseModel):
@@ -243,81 +240,3 @@ def remove_user_group(payload: UserGroupRemove, user: CurrentUser) -> dict[str, 
             USER_LDAP_GROUPS.pop(user_id, None)
     _write_userid_to_group_mapping()
     return {"status": "ok"}
-
-
-@app.get("/apps/{applicationservice_id}")
-def get_applicationservice(applicationservice_id: str, user: CurrentUser) -> dict[str, Any]:
-    enforce_request(
-        user,
-        f"/apps/{applicationservice_id}",
-        "GET",
-        applicationservice={"id": applicationservice_id},
-    )
-    applicationservice = APPLICATIONSERVICES.get(applicationservice_id)
-    if not applicationservice:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ApplicationService not found")
-    return {"applicationservice_id": applicationservice_id, "content": applicationservice["content"], "user": user}
-
-
-@app.get("/apps/{applicationservice_id}/flows")
-def list_flows(applicationservice_id: str, user: CurrentUser) -> dict[str, Any]:
-    enforce_request(
-        user,
-        f"/flows/{applicationservice_id}",
-        "GET",
-        applicationservice={"id": applicationservice_id},
-    )
-    if applicationservice_id not in APPLICATIONSERVICES:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ApplicationService not found")
-    return {"rows": APP_FLOWS.get(applicationservice_id, [])}
-
-
-class FlowCreate(BaseModel):
-    name: str
-    content: str = ""
-
-
-@app.post("/apps/{applicationservice_id}/flows")
-def create_flow(applicationservice_id: str, payload: FlowCreate, user: CurrentUser) -> dict[str, Any]:
-    enforce_request(
-        user,
-        f"/flows/{applicationservice_id}",
-        "POST",
-        applicationservice={"id": applicationservice_id},
-    )
-    if applicationservice_id not in APPLICATIONSERVICES:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ApplicationService not found")
-
-    name = payload.name.strip()
-    if not name:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Flow name is required")
-
-    flow = {"id": str(uuid4()), "name": name, "content": payload.content}
-    APP_FLOWS.setdefault(applicationservice_id, []).append(flow)
-    return {"status": "ok", "flow": flow}
-
-
-@app.put("/apps/{applicationservice_id}")
-def update_applicationservice(applicationservice_id: str, user: CurrentUser) -> dict[str, Any]:
-    enforce_request(
-        user,
-        f"/apps/{applicationservice_id}",
-        "PUT",
-        applicationservice={"id": applicationservice_id},
-    )
-    if applicationservice_id not in APPLICATIONSERVICES:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ApplicationService not found")
-    return {"applicationservice_id": applicationservice_id, "message": "Updated", "user": user}
-
-
-@app.delete("/apps/{applicationservice_id}")
-def delete_applicationservice(applicationservice_id: str, user: CurrentUser) -> dict[str, Any]:
-    enforce_request(
-        user,
-        f"/apps/{applicationservice_id}",
-        "DELETE",
-        applicationservice={"id": applicationservice_id},
-    )
-    if applicationservice_id not in APPLICATIONSERVICES:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ApplicationService not found")
-    return {"applicationservice_id": applicationservice_id, "message": "Deleted", "user": user}
