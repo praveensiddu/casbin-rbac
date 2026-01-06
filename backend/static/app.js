@@ -76,6 +76,12 @@ function App() {
   const [arMyRequests, setArMyRequests] = useState([]);
   const [arAllRequests, setArAllRequests] = useState([]);
 
+  const [appsRows, setAppsRows] = useState([]);
+  const [selectedAppId, setSelectedAppId] = useState('');
+  const [appsView, setAppsView] = useState('apps');
+  const [flowsRows, setFlowsRows] = useState([]);
+  const [flowName, setFlowName] = useState('');
+
   const rmAppIds = useMemo(() => rmRows.map((r) => r.appsvc_id), [rmRows]);
 
   const isAuthed = useMemo(() => Boolean(token), [token]);
@@ -90,6 +96,42 @@ function App() {
       setGroups(data.groups || []);
       setRoles(data.roles || []);
       setOutput(JSON.stringify(data, null, 2));
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function loadApps() {
+    setError('');
+    try {
+      const resp = await apiRequest('/apps', { method: 'GET', token });
+      setAppsRows(resp.rows || []);
+      if (!selectedAppId && (resp.rows || []).length) setSelectedAppId((resp.rows || [])[0].applicationservice_id);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function loadFlows(appId) {
+    setError('');
+    try {
+      const resp = await apiRequest(`/apps/${appId}/flows`, { method: 'GET', token });
+      setFlowsRows(resp.rows || []);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function addFlow() {
+    setError('');
+    try {
+      await apiRequest(`/apps/${selectedAppId}/flows`, {
+        method: 'POST',
+        token,
+        body: { name: flowName },
+      });
+      setFlowName('');
+      await loadFlows(selectedAppId);
     } catch (err) {
       setError(err.message);
     }
@@ -229,6 +271,11 @@ function App() {
     setArGroup('');
     setArMyRequests([]);
     setArAllRequests([]);
+    setAppsRows([]);
+    setSelectedAppId('');
+    setAppsView('apps');
+    setFlowsRows([]);
+    setFlowName('');
   }
 
   return (
@@ -285,6 +332,17 @@ function App() {
           >
             Access Requests
           </button>
+          <button
+            type="button"
+            className={`tab ${tab === 'apps' ? 'active' : ''}`}
+            disabled={!isAuthed}
+            onClick={async () => {
+              setTab('apps');
+              if (isAuthed) await loadApps();
+            }}
+          >
+            Apps
+          </button>
         </div>
 
         {tab === 'demo' ? (
@@ -298,6 +356,125 @@ function App() {
               <button disabled={!isAuthed} onClick={() => callEndpoint('/apps/network', 'PUT')}>PUT /apps/network</button>
               <button disabled={!isAuthed} onClick={() => callEndpoint('/apps/network', 'DELETE')}>DELETE /apps/network</button>
             </div>
+          </Section>
+        ) : null}
+
+        {tab === 'apps' ? (
+          <Section title="Apps">
+            {appsView === 'apps' ? (
+              <>
+                <div className="row">
+                  <button type="button" onClick={loadApps} disabled={!isAuthed}>Refresh</button>
+                  <button
+                    type="button"
+                    disabled={!isAuthed || !selectedAppId}
+                    onClick={async () => {
+                      await loadFlows(selectedAppId);
+                      setAppsView('flows');
+                    }}
+                  >
+                    Flows Mgmt
+                  </button>
+                </div>
+
+                <div className="row small muted" style={{ marginTop: 10 }}>
+                  <div style={{ width: 36 }} />
+                  <div style={{ flex: 1 }}>App</div>
+                  <div style={{ flex: 3 }}>Content</div>
+                </div>
+
+                <div style={{ overflowX: 'auto', marginTop: 8 }}>
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: 36 }} />
+                        <th>App</th>
+                        <th>Content</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(appsRows || []).length ? (
+                        appsRows.map((r) => (
+                          <tr key={r.applicationservice_id}>
+                            <td>
+                              <input
+                                type="radio"
+                                name="selectedApp"
+                                checked={selectedAppId === r.applicationservice_id}
+                                onChange={() => setSelectedAppId(r.applicationservice_id)}
+                              />
+                            </td>
+                            <td>{r.applicationservice_id}</td>
+                            <td>{r.content || ''}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="3"><span className="muted">-</span></td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="row">
+                  <button type="button" onClick={() => setAppsView('apps')}>Back to apps</button>
+                  <button
+                    type="button"
+                    disabled={!isAuthed || !selectedAppId}
+                    onClick={() => loadFlows(selectedAppId)}
+                  >
+                    Refresh
+                  </button>
+                  <div className="muted"><b>App:</b> {selectedAppId || '-'}</div>
+                </div>
+
+                <div className="row" style={{ marginTop: 10, alignItems: 'center' }}>
+                  <div style={{ minWidth: 120 }}><b>Add Flow</b></div>
+                  <input
+                    style={{ flex: 1, minWidth: 220 }}
+                    value={flowName}
+                    onChange={(e) => setFlowName(e.target.value)}
+                    placeholder="flowname"
+                  />
+                  <button
+                    style={{ width: 80 }}
+                    type="button"
+                    disabled={!isAuthed || !selectedAppId || !flowName.trim()}
+                    onClick={addFlow}
+                  >
+                    Add
+                  </button>
+                </div>
+
+                <div style={{ overflowX: 'auto', marginTop: 12 }}>
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Flow</th>
+                        <th>Content</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(flowsRows || []).length ? (
+                        flowsRows.map((f) => (
+                          <tr key={f.id || f.name}>
+                            <td>{f.name || '-'}</td>
+                            <td>{f.content || ''}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="2"><span className="muted">-</span></td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </Section>
         ) : null}
 

@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from uuid import uuid4
 
 from backend.config_loader import (
     load_applicationservices,
@@ -46,6 +47,8 @@ GROUP_GLOBAL_ROLES_PATH = BASE_DIR / "roles_4_groups2global.yaml"
 ACCESS_REQUESTS_PATH = BASE_DIR / "access_requests.yaml"
 
 APPLICATIONSERVICES = load_applicationservices(BASE_DIR)
+
+APP_FLOWS: dict[str, list[dict[str, Any]]] = {}
 
 
 ENFORCER = build_enforcer(
@@ -184,6 +187,20 @@ def admin(user: CurrentUser) -> dict[str, Any]:
     return {"message": "Welcome to admin", "user": user}
 
 
+@app.get("/apps")
+def list_apps(user: CurrentUser) -> dict[str, Any]:
+    enforce_request(user, "/apps", "GET")
+    rows: list[dict[str, Any]] = []
+    for applicationservice_id in sorted(list(APPLICATIONSERVICES.keys())):
+        rows.append(
+            {
+                "applicationservice_id": applicationservice_id,
+                "content": APPLICATIONSERVICES[applicationservice_id].get("content", ""),
+            }
+        )
+    return {"rows": rows}
+
+
 @app.get("/apps/{applicationservice_id}")
 def get_applicationservice(applicationservice_id: str, user: CurrentUser) -> dict[str, Any]:
     enforce_request(
@@ -196,6 +213,44 @@ def get_applicationservice(applicationservice_id: str, user: CurrentUser) -> dic
     if not applicationservice:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ApplicationService not found")
     return {"applicationservice_id": applicationservice_id, "content": applicationservice["content"], "user": user}
+
+
+@app.get("/apps/{applicationservice_id}/flows")
+def list_flows(applicationservice_id: str, user: CurrentUser) -> dict[str, Any]:
+    enforce_request(
+        user,
+        f"/apps/{applicationservice_id}/flows",
+        "GET",
+        applicationservice={"id": applicationservice_id},
+    )
+    if applicationservice_id not in APPLICATIONSERVICES:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ApplicationService not found")
+    return {"rows": APP_FLOWS.get(applicationservice_id, [])}
+
+
+class FlowCreate(BaseModel):
+    name: str
+    content: str = ""
+
+
+@app.post("/apps/{applicationservice_id}/flows")
+def create_flow(applicationservice_id: str, payload: FlowCreate, user: CurrentUser) -> dict[str, Any]:
+    enforce_request(
+        user,
+        f"/apps/{applicationservice_id}/flows",
+        "POST",
+        applicationservice={"id": applicationservice_id},
+    )
+    if applicationservice_id not in APPLICATIONSERVICES:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ApplicationService not found")
+
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Flow name is required")
+
+    flow = {"id": str(uuid4()), "name": name, "content": payload.content}
+    APP_FLOWS.setdefault(applicationservice_id, []).append(flow)
+    return {"status": "ok", "flow": flow}
 
 
 @app.put("/apps/{applicationservice_id}")
