@@ -16,7 +16,7 @@ from backend.config_loader import (
     load_roles_4_users2global,
     load_userid_to_group_mapping,
 )
-from backend.casbin_service import build_enforcer, enforce
+from backend.casbin_service import build_enforcer, enforce_rbac
 from backend.routers.access_requests import create_access_requests_router
 from backend.routers.apps import create_apps_router
 from backend.routers.role_management import create_role_management_router
@@ -126,7 +126,7 @@ CurrentUser = Annotated[dict[str, Any], Depends(get_current_user_context)]
 def enforce_request(
     user: dict[str, Any], obj: str, act: str, applicationservice: dict[str, Any] | None = None
 ) -> None:
-    enforce(enforcer=ENFORCER, user=user, obj=obj, act=act, applicationservice=applicationservice)
+    enforce_rbac(enforcer=ENFORCER, user=user, obj=obj, act=act, applicationservice=applicationservice)
 
 
 app.include_router(
