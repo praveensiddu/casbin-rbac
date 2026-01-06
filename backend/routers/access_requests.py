@@ -19,7 +19,7 @@ class AccessRequestCreate(BaseModel):
 def create_access_requests_router(
     *,
     enforce: Callable[[dict[str, Any], str, str], None],
-    get_current_user: Callable[..., dict[str, Any]],
+    get_current_user_context: Callable[..., dict[str, Any]],
     access_requests_path: Path,
     applicationservices: dict[str, dict[str, str]],
 ) -> APIRouter:
@@ -42,7 +42,7 @@ def create_access_requests_router(
         access_requests_path.write_text(yaml.safe_dump({"requests": requests}, sort_keys=True))
 
     @router.get("/access-requests/applicationservices")
-    def list_applicationservices(user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
+    def list_applicationservices(user: dict[str, Any] = Depends(get_current_user_context)) -> dict[str, Any]:
         enforce(user, "/access-requests/applicationservices", "GET")
         rows = []
         for app_id in sorted(list(applicationservices.keys())):
@@ -50,7 +50,7 @@ def create_access_requests_router(
         return {"rows": rows}
 
     @router.post("/access-requests/request")
-    def create_request(payload: AccessRequestCreate, user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
+    def create_request(payload: AccessRequestCreate, user: dict[str, Any] = Depends(get_current_user_context)) -> dict[str, Any]:
         enforce(user, "/access-requests/request", "POST")
 
         role = payload.role.strip()
@@ -82,7 +82,7 @@ def create_access_requests_router(
         return {"status": "ok", "request": req}
 
     @router.get("/access-requests/me")
-    def my_requests(user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
+    def my_requests(user: dict[str, Any] = Depends(get_current_user_context)) -> dict[str, Any]:
         enforce(user, "/access-requests/me", "GET")
         requested_by = str(user.get("username", ""))
         mine = [
@@ -94,7 +94,7 @@ def create_access_requests_router(
         return {"requests": mine}
 
     @router.get("/access-requests/all")
-    def all_requests(user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
+    def all_requests(user: dict[str, Any] = Depends(get_current_user_context)) -> dict[str, Any]:
         enforce(user, "/access-requests/all", "GET")
         items = _read_requests()
         items.sort(key=lambda r: str(r.get("created_at", "")), reverse=True)

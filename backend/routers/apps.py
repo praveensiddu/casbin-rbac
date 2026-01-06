@@ -15,14 +15,14 @@ class FlowCreate(BaseModel):
 def create_apps_router(
     *,
     enforce: Callable[[dict[str, Any], str, str, dict[str, Any] | None], None],
-    get_current_user: Callable[..., dict[str, Any]],
+    get_current_user_context: Callable[..., dict[str, Any]],
     applicationservices: dict[str, dict[str, str]],
     app_flows: dict[str, list[dict[str, Any]]],
 ) -> APIRouter:
     router = APIRouter()
 
     @router.get("/apps")
-    def list_apps(user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
+    def list_apps(user: dict[str, Any] = Depends(get_current_user_context)) -> dict[str, Any]:
         enforce(user, "/apps", "GET", None)
         rows: list[dict[str, Any]] = []
         for applicationservice_id in sorted(list(applicationservices.keys())):
@@ -35,7 +35,7 @@ def create_apps_router(
         return {"rows": rows}
 
     @router.get("/apps/{applicationservice_id}")
-    def get_applicationservice(applicationservice_id: str, user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
+    def get_applicationservice(applicationservice_id: str, user: dict[str, Any] = Depends(get_current_user_context)) -> dict[str, Any]:
         enforce(
             user,
             f"/apps/{applicationservice_id}",
@@ -52,7 +52,7 @@ def create_apps_router(
         }
 
     @router.get("/apps/{applicationservice_id}/flows")
-    def list_flows(applicationservice_id: str, user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
+    def list_flows(applicationservice_id: str, user: dict[str, Any] = Depends(get_current_user_context)) -> dict[str, Any]:
         enforce(
             user,
             f"/flows/{applicationservice_id}",
@@ -67,7 +67,7 @@ def create_apps_router(
     def create_flow(
         applicationservice_id: str,
         payload: FlowCreate,
-        user: dict[str, Any] = Depends(get_current_user),
+        user: dict[str, Any] = Depends(get_current_user_context),
     ) -> dict[str, Any]:
         enforce(
             user,
@@ -87,7 +87,7 @@ def create_apps_router(
         return {"status": "ok", "flow": flow}
 
     @router.put("/apps/{applicationservice_id}")
-    def update_applicationservice(applicationservice_id: str, user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
+    def update_applicationservice(applicationservice_id: str, user: dict[str, Any] = Depends(get_current_user_context)) -> dict[str, Any]:
         enforce(
             user,
             f"/apps/{applicationservice_id}",
@@ -99,7 +99,7 @@ def create_apps_router(
         return {"applicationservice_id": applicationservice_id, "message": "Updated", "user": user}
 
     @router.delete("/apps/{applicationservice_id}")
-    def delete_applicationservice(applicationservice_id: str, user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
+    def delete_applicationservice(applicationservice_id: str, user: dict[str, Any] = Depends(get_current_user_context)) -> dict[str, Any]:
         enforce(
             user,
             f"/apps/{applicationservice_id}",

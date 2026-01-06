@@ -22,7 +22,7 @@ class GlobalRoleAssignmentRequest(BaseModel):
 def create_role_management_router(
     *,
     enforce: Callable[[dict[str, Any], str, str], None],
-    get_current_user: Callable[..., dict[str, Any]],
+    get_current_user_context: Callable[..., dict[str, Any]],
     group_doc_roles_path: Path,
     group_global_roles_path: Path,
     user_ldap_groups: dict[str, set[str]],
@@ -63,12 +63,12 @@ def create_role_management_router(
         return sorted(list(groups))
 
     @router.get("/role-management/groups")
-    def list_groups(user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
+    def list_groups(user: dict[str, Any] = Depends(get_current_user_context)) -> dict[str, Any]:
         enforce(user, "/role-management/groups", "GET")
         return {"groups": _all_known_groups()}
 
     @router.get("/role-management/applicationservices")
-    def list_applicationservice_roles(user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
+    def list_applicationservice_roles(user: dict[str, Any] = Depends(get_current_user_context)) -> dict[str, Any]:
         enforce(user, "/role-management/applicationservices", "GET")
 
         viewer_groups_by_app: dict[str, list[str]] = {}
@@ -95,14 +95,14 @@ def create_role_management_router(
         return {"rows": rows}
 
     @router.get("/role-management/global-roles")
-    def list_global_roles(user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
+    def list_global_roles(user: dict[str, Any] = Depends(get_current_user_context)) -> dict[str, Any]:
         enforce(user, "/role-management/global-roles", "GET")
         viewall_groups = sorted([g for g, roles in roles4groups2global.items() if "viewall" in roles])
         return {"viewall_access": viewall_groups}
 
     @router.post("/role-management/global-roles/assign")
     def assign_global_role(
-        payload: GlobalRoleAssignmentRequest, user: dict[str, Any] = Depends(get_current_user)
+        payload: GlobalRoleAssignmentRequest, user: dict[str, Any] = Depends(get_current_user_context)
     ) -> dict[str, Any]:
         enforce(user, "/role-management/global-roles/assign", "POST")
 
@@ -125,7 +125,7 @@ def create_role_management_router(
 
     @router.post("/role-management/global-roles/unassign")
     def unassign_global_role(
-        payload: GlobalRoleAssignmentRequest, user: dict[str, Any] = Depends(get_current_user)
+        payload: GlobalRoleAssignmentRequest, user: dict[str, Any] = Depends(get_current_user_context)
     ) -> dict[str, Any]:
         enforce(user, "/role-management/global-roles/unassign", "POST")
 
@@ -152,7 +152,7 @@ def create_role_management_router(
         return {"status": "ok"}
 
     @router.post("/role-management/assign")
-    def assign_role(payload: RoleAssignmentRequest, user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
+    def assign_role(payload: RoleAssignmentRequest, user: dict[str, Any] = Depends(get_current_user_context)) -> dict[str, Any]:
         enforce(user, "/role-management/assign", "POST")
 
         group = payload.group.strip()
@@ -176,7 +176,7 @@ def create_role_management_router(
         return {"status": "ok"}
 
     @router.post("/role-management/unassign")
-    def unassign_role(payload: RoleAssignmentRequest, user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
+    def unassign_role(payload: RoleAssignmentRequest, user: dict[str, Any] = Depends(get_current_user_context)) -> dict[str, Any]:
         enforce(user, "/role-management/unassign", "POST")
 
         role = payload.role.strip()

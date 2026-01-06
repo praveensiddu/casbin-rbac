@@ -112,14 +112,14 @@ def get_user_context(user_id: str) -> dict[str, Any]:
     }
 
 
-def get_current_user(authorization: str | None = Header(default=None)) -> dict[str, Any]:
+def get_current_user_context(authorization: str | None = Header(default=None)) -> dict[str, Any]:
     user_id = _parse_bearer(authorization)
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token")
     return get_user_context(user_id)
 
 
-CurrentUser = Annotated[dict[str, Any], Depends(get_current_user)]
+CurrentUser = Annotated[dict[str, Any], Depends(get_current_user_context)]
 
 
 def enforce_request(
@@ -131,7 +131,7 @@ def enforce_request(
 app.include_router(
     create_role_management_router(
         enforce=lambda user, obj, act: enforce_request(user, obj, act),
-        get_current_user=get_current_user,
+        get_current_user_context=get_current_user_context,
         group_doc_roles_path=GROUP_DOC_ROLES_PATH,
         group_global_roles_path=GROUP_GLOBAL_ROLES_PATH,
         user_ldap_groups=USER_LDAP_GROUPS,
@@ -144,7 +144,7 @@ app.include_router(
 app.include_router(
     create_access_requests_router(
         enforce=lambda user, obj, act: enforce_request(user, obj, act),
-        get_current_user=get_current_user,
+        get_current_user_context=get_current_user_context,
         access_requests_path=ACCESS_REQUESTS_PATH,
         applicationservices=APPLICATIONSERVICES,
     )
@@ -155,7 +155,7 @@ app.include_router(
         enforce=lambda user, obj, act, applicationservice: enforce_request(
             user, obj, act, applicationservice=applicationservice
         ),
-        get_current_user=get_current_user,
+        get_current_user_context=get_current_user_context,
         applicationservices=APPLICATIONSERVICES,
         app_flows=APP_FLOWS,
     )
