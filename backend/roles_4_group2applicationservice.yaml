@@ -1,13 +1,6 @@
-abc:
-  network:
-  - recertify
-  - viewer
-  tgw:
-  - viewer
 architecturesysgroup:
   adc:
   - recertify
-  - viewer
   network:
   - viewer
 architecturesysgroup1:
@@ -16,6 +9,6 @@ architecturesysgroup1:
 architecturesysgroup2:
   workflow:
   - recertify
-sitao:
-  tgw:
-  - viewer
+architecturesysgroup3:
+  fi:
+  - recertify

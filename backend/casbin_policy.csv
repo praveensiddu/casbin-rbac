@@ -6,22 +6,21 @@
 # - act: action/method regex (e.g. GET or (GET|POST))
 # - cond: Python expression evaluated by Casbin (simpleeval); use True/False (not true/false)
 
-p, admin, /admin, GET, True
-p, admin, /data, (GET|POST), True
 p, admin, /apps, GET, True
 p, admin, /apps/*, (GET|PUT|DELETE), True
-p, admin, /apps/*/flows, (GET|POST), True
+p, admin, /flows/*, POST, True
 p, admin, /role-management/*, (GET|POST), True
 
 p, admin, /access-requests/*, (GET|POST), True
 
-p, viewall, /data, GET, True
 p, viewall, /apps, GET, True
 p, viewall, /apps/*, GET, True
-p, viewall, /apps/*/flows, GET, True
 
-p, user, /data, GET, True
 p, user, /apps, GET, True
+p, user, /user-groups, GET, True
+p, user, /user-groups/*, POST, True
+
+p, user, /role-management/*, GET, True
 
 p, user, /access-requests/applicationservices, GET, True
 p, user, /access-requests/request, POST, True
@@ -29,9 +28,8 @@ p, user, /access-requests/me, GET, True
 
 p, recertify, /apps/*, GET, True
 p, recertify, /apps/*, PUT, True
-p, recertify, /apps/*/flows, GET, True
+p, recertify, /flows/*, GET, True
 
-p, viewer, /data, GET, True
 p, viewer, /apps, GET, True
 p, viewer, /apps/*, GET, True
-p, viewer, /apps/*/flows, GET, True
+p, viewer, /flows/*, GET, True

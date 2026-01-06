@@ -56,7 +56,7 @@ ApplicationServices are loaded from:
 
 - `backend/applicationservices.yaml`
 
-- `admin` can GET `/admin`, GET/POST `/data`, and GET/PUT/DELETE `/apps/*`
-- `viewall` can GET `/data` and GET `/apps/*`
+- `admin` can GET/PUT/DELETE `/apps/*`
+- `viewall` can GET `/apps/*`
 - `recertify` can GET/PUT `/apps/*` (only for applicationservices where they have recertify)
 - `viewer` can GET `/apps/*` (only for applicationservices where they have viewer)

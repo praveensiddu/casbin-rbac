@@ -55,7 +55,7 @@ function App() {
   const [roles, setRoles] = useState([]);
   const [output, setOutput] = useState('');
   const [error, setError] = useState('');
-  const [tab, setTab] = useState('demo');
+  const [tab, setTab] = useState('apps');
 
   const userIds = useMemo(() => ['alice', 'bob', 'eve', 'carol'], []);
   const [selectedUserId, setSelectedUserId] = useState('alice');
@@ -82,6 +82,10 @@ function App() {
   const [flowsRows, setFlowsRows] = useState([]);
   const [flowName, setFlowName] = useState('');
 
+  const [ugRows, setUgRows] = useState([]);
+  const [ugNewUserId, setUgNewUserId] = useState('');
+  const [ugNewGroup, setUgNewGroup] = useState('');
+
   const rmAppIds = useMemo(() => rmRows.map((r) => r.appsvc_id), [rmRows]);
 
   const isAuthed = useMemo(() => Boolean(token), [token]);
@@ -96,6 +100,16 @@ function App() {
       setGroups(data.groups || []);
       setRoles(data.roles || []);
       setOutput(JSON.stringify(data, null, 2));
+
+      try {
+        const appsResp = await apiRequest('/apps', { method: 'GET', token: data.access_token });
+        setAppsRows(appsResp.rows || []);
+        if ((appsResp.rows || []).length) setSelectedAppId((appsResp.rows || [])[0].applicationservice_id);
+        setAppsView('apps');
+        setTab('apps');
+      } catch {
+        // ignore auto-load errors (user can click Refresh)
+      }
     } catch (err) {
       setError(err.message);
     }
@@ -137,6 +151,45 @@ function App() {
     }
   }
 
+  async function loadUserGroups() {
+    setError('');
+    try {
+      const resp = await apiRequest('/user-groups', { method: 'GET', token });
+      setUgRows(resp.rows || []);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function addUserGroup() {
+    setError('');
+    try {
+      await apiRequest('/user-groups/add', {
+        method: 'POST',
+        token,
+        body: { user_id: ugNewUserId, group: ugNewGroup },
+      });
+      setUgNewGroup('');
+      await loadUserGroups();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function removeUserGroup(userId, group) {
+    setError('');
+    try {
+      await apiRequest('/user-groups/remove', {
+        method: 'POST',
+        token,
+        body: { user_id: userId, group },
+      });
+      await loadUserGroups();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function assignViewall() {
     setError('');
     try {
@@ -160,17 +213,6 @@ function App() {
         body: { group, role: 'viewall' },
       });
       await loadRoleManagement();
-    } catch (err) {
-      setError(err.message);
-    }
-  }
-
-  async function callEndpoint(path, method) {
-    setError('');
-    setOutput('');
-    try {
-      const data = await apiRequest(path, { method, token });
-      setOutput(JSON.stringify(data, null, 2));
     } catch (err) {
       setError(err.message);
     }
@@ -260,7 +302,7 @@ function App() {
     setRoles([]);
     setOutput('');
     setError('');
-    setTab('demo');
+    setTab('apps');
     setSelectedUserId('alice');
     setRmRows([]);
     setRmGroups([]);
@@ -276,6 +318,10 @@ function App() {
     setAppsView('apps');
     setFlowsRows([]);
     setFlowName('');
+
+    setUgRows([]);
+    setUgNewUserId('');
+    setUgNewGroup('');
   }
 
   return (
@@ -304,11 +350,14 @@ function App() {
         <div className="tabs">
           <button
             type="button"
-            className={`tab ${tab === 'demo' ? 'active' : ''}`}
+            className={`tab ${tab === 'apps' ? 'active' : ''}`}
             disabled={!isAuthed}
-            onClick={() => setTab('demo')}
+            onClick={async () => {
+              setTab('apps');
+              if (isAuthed) await loadApps();
+            }}
           >
-            Demo
+            Apps
           </button>
           <button
             type="button"
@@ -323,6 +372,17 @@ function App() {
           </button>
           <button
             type="button"
+            className={`tab ${tab === 'usergroups' ? 'active' : ''}`}
+            disabled={!isAuthed}
+            onClick={async () => {
+              setTab('usergroups');
+              if (isAuthed) await loadUserGroups();
+            }}
+          >
+            User Groups
+          </button>
+          <button
+            type="button"
             className={`tab ${tab === 'requests' ? 'active' : ''}`}
             disabled={!isAuthed}
             onClick={async () => {
@@ -334,30 +394,13 @@ function App() {
           </button>
           <button
             type="button"
-            className={`tab ${tab === 'apps' ? 'active' : ''}`}
+            className={`tab ${tab === 'demo' ? 'active' : ''}`}
             disabled={!isAuthed}
-            onClick={async () => {
-              setTab('apps');
-              if (isAuthed) await loadApps();
-            }}
+            onClick={() => setTab('demo')}
           >
-            Apps
+            Demo
           </button>
         </div>
-
-        {tab === 'demo' ? (
-          <Section title="Try endpoints">
-            <div className="grid">
-              <button disabled={!isAuthed} onClick={() => callEndpoint('/me', 'GET')}>GET /me</button>
-              <button disabled={!isAuthed} onClick={() => callEndpoint('/data', 'GET')}>GET /data</button>
-              <button disabled={!isAuthed} onClick={() => callEndpoint('/data', 'POST')}>POST /data</button>
-              <button disabled={!isAuthed} onClick={() => callEndpoint('/admin', 'GET')}>GET /admin</button>
-              <button disabled={!isAuthed} onClick={() => callEndpoint('/apps/network', 'GET')}>GET /apps/network</button>
-              <button disabled={!isAuthed} onClick={() => callEndpoint('/apps/network', 'PUT')}>PUT /apps/network</button>
-              <button disabled={!isAuthed} onClick={() => callEndpoint('/apps/network', 'DELETE')}>DELETE /apps/network</button>
-            </div>
-          </Section>
-        ) : null}
 
         {tab === 'apps' ? (
           <Section title="Apps">
@@ -478,6 +521,81 @@ function App() {
           </Section>
         ) : null}
 
+        {tab === 'usergroups' ? (
+          <Section title="User -> Groups">
+            <div className="row">
+              <button type="button" onClick={loadUserGroups} disabled={!isAuthed}>Refresh</button>
+            </div>
+
+            <div className="row small muted" style={{ marginTop: 10 }}>
+              <div style={{ flex: 1 }}>userId</div>
+              <div style={{ flex: 2 }}>group</div>
+              <div style={{ width: 80 }} />
+            </div>
+
+            <div className="row" style={{ marginTop: 4 }}>
+              <input
+                style={{ flex: 1 }}
+                value={ugNewUserId}
+                onChange={(e) => setUgNewUserId(e.target.value)}
+                placeholder="userId"
+              />
+              <input
+                style={{ flex: 2 }}
+                value={ugNewGroup}
+                onChange={(e) => setUgNewGroup(e.target.value)}
+                placeholder="group"
+              />
+              <button
+                style={{ width: 80 }}
+                type="button"
+                onClick={addUserGroup}
+                disabled={!ugNewUserId.trim() || !ugNewGroup.trim()}
+              >
+                Add
+              </button>
+            </div>
+
+            <div style={{ overflowX: 'auto', marginTop: 12 }}>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Groups</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(ugRows || []).length ? (
+                    ugRows.map((r) => (
+                      <tr key={r.user_id}>
+                        <td>{r.user_id}</td>
+                        <td>
+                          {(r.groups || []).length ? (
+                            <div className="chips">
+                              {r.groups.map((g) => (
+                                <span key={`${r.user_id}-${g}`} className="chip">
+                                  {g}
+                                  <button type="button" className="chipBtn" onClick={() => removeUserGroup(r.user_id, g)}>x</button>
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="muted">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="2"><span className="muted">-</span></td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Section>
+        ) : null}
+
         {tab === 'requests' ? (
           <Section title="Access Requests">
             <div className="row">
@@ -580,64 +698,61 @@ function App() {
 
         {tab === 'roles' ? (
           <Section title="Role Management">
-            {!isAdmin ? (
-              <div className="muted">Only admin can manage role assignments.</div>
-            ) : (
-              <>
-                <div className="row">
-                  <button type="button" onClick={loadRoleManagement}>Refresh</button>
+            <>
+              <div className="row">
+                <button type="button" onClick={loadRoleManagement}>Refresh</button>
+              </div>
+
+              <div className="row" style={{ marginTop: 14 }}>
+                <div style={{ minWidth: 180 }}><b>grant viewall access</b></div>
+                <div className="chips" style={{ flex: 1 }}>
+                  {(rmViewallAccess || []).length ? (
+                    rmViewallAccess.map((g) => (
+                      <span key={`viewall-${g}`} className="chip">
+                        {g}
+                        <button type="button" className="chipBtn" onClick={() => unassignViewall(g)}>x</button>
+                      </span>
+                    ))
+                  ) : (
+                    <span className="muted">-</span>
+                  )}
                 </div>
+              </div>
 
-                <div className="row" style={{ marginTop: 14 }}>
-                  <div style={{ minWidth: 180 }}><b>grant viewall access</b></div>
-                  <div className="chips" style={{ flex: 1 }}>
-                    {(rmViewallAccess || []).length ? (
-                      rmViewallAccess.map((g) => (
-                        <span key={`viewall-${g}`} className="chip">
-                          {g}
-                          <button type="button" className="chipBtn" onClick={() => unassignViewall(g)}>x</button>
-                        </span>
-                      ))
-                    ) : (
-                      <span className="muted">-</span>
-                    )}
-                  </div>
-                </div>
+              <div className="row small muted" style={{ marginTop: 10 }}>
+                <div style={{ flex: 1 }}>User/group</div>
+                <div style={{ width: 60 }} />
+              </div>
 
-                <div className="row small muted" style={{ marginTop: 10 }}>
-                  <div style={{ flex: 1 }}>User/group</div>
-                  <div style={{ width: 60 }} />
-                </div>
+              <div className="row" style={{ marginTop: 4 }}>
+                <input
+                  style={{ flex: 1 }}
+                  value={rmViewallGroup}
+                  onChange={(e) => setRmViewallGroup(e.target.value)}
+                  placeholder="group"
+                />
+                <button style={{ width: 60 }} type="button" onClick={assignViewall} disabled={!rmViewallGroup}>Add</button>
+              </div>
 
-                <div className="row" style={{ marginTop: 4 }}>
-                  <input
-                    style={{ flex: 1 }}
-                    value={rmViewallGroup}
-                    onChange={(e) => setRmViewallGroup(e.target.value)}
-                    placeholder="group"
-                  />
-                  <button style={{ width: 60 }} type="button" onClick={assignViewall} disabled={!rmViewallGroup}>Add</button>
-                </div>
+              <div className="divider" />
 
-                <div className="divider" />
+              <div className="row" style={{ marginTop: 6 }}>
+                <div><b>Grant applicationservice specific access</b></div>
+              </div>
 
-                <div className="row" style={{ marginTop: 6 }}>
-                  <div><b>Grant applicationservice specific access</b></div>
-                </div>
+              <div className="row small muted" style={{ marginTop: 10 }}>
+                <div style={{ flex: 1 }}>applicationservice</div>
+                <div style={{ flex: 1 }}>role</div>
+                <div style={{ flex: 1 }}>User/group</div>
+                <div style={{ width: 60 }} />
+              </div>
 
-                <div className="row small muted" style={{ marginTop: 10 }}>
-                  <div style={{ flex: 1 }}>applicationservice</div>
-                  <div style={{ flex: 1 }}>role</div>
-                  <div style={{ flex: 1 }}>User/group</div>
-                  <div style={{ width: 60 }} />
-                </div>
-
-                <div className="row" style={{ marginTop: 4 }}>
-                  <select style={{ flex: 1 }} value={rmAppId} onChange={(e) => setRmAppId(e.target.value)}>
-                    {rmAppIds.map((id) => (
-                      <option key={id} value={id}>{id}</option>
-                    ))}
-                  </select>
+              <div className="row" style={{ marginTop: 4 }}>
+                <select style={{ flex: 1 }} value={rmAppId} onChange={(e) => setRmAppId(e.target.value)}>
+                  {rmAppIds.map((id) => (
+                    <option key={id} value={id}>{id}</option>
+                  ))}
+                </select>
 
                   <select style={{ flex: 1 }} value={rmRole} onChange={(e) => setRmRole(e.target.value)}>
                     <option value="viewer">viewer</option>
@@ -708,7 +823,6 @@ function App() {
                   </table>
                 </div>
               </>
-            )}
           </Section>
         ) : null}
 

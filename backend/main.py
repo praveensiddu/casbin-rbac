@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from uuid import uuid4
+import yaml
 
 from backend.config_loader import (
     load_applicationservices,
@@ -40,6 +41,8 @@ USER_LDAP_GROUPS = load_userid_to_group_mapping(BASE_DIR)
 roles4groups2global = load_roles_4_groups2global(BASE_DIR)
 LDAP_USER_GLOBAL_ROLES = load_roles_4_users2global(BASE_DIR)
 group2appsvc_roles = load_roles_4_group2applicationservice(BASE_DIR)
+
+USERID_TO_GROUP_MAPPING_PATH = BASE_DIR / "userid_to_group_mapping.yaml"
 
 GROUP_DOC_ROLES_PATH = BASE_DIR / "roles_4_group2applicationservice.yaml"
 GROUP_GLOBAL_ROLES_PATH = BASE_DIR / "roles_4_groups2global.yaml"
@@ -169,24 +172,6 @@ def me(user: CurrentUser) -> dict[str, Any]:
     return user
 
 
-@app.get("/data")
-def read_data(user: CurrentUser) -> dict[str, Any]:
-    enforce_request(user, "/data", "GET")
-    return {"message": "You can read data", "user": user}
-
-
-@app.post("/data")
-def write_data(user: CurrentUser) -> dict[str, Any]:
-    enforce_request(user, "/data", "POST")
-    return {"message": "You can write data", "user": user}
-
-
-@app.get("/admin")
-def admin(user: CurrentUser) -> dict[str, Any]:
-    enforce_request(user, "/admin", "GET")
-    return {"message": "Welcome to admin", "user": user}
-
-
 @app.get("/apps")
 def list_apps(user: CurrentUser) -> dict[str, Any]:
     enforce_request(user, "/apps", "GET")
@@ -199,6 +184,65 @@ def list_apps(user: CurrentUser) -> dict[str, Any]:
             }
         )
     return {"rows": rows}
+
+
+class UserGroupAdd(BaseModel):
+    user_id: str
+    group: str
+
+
+class UserGroupRemove(BaseModel):
+    user_id: str
+    group: str
+
+
+def _write_userid_to_group_mapping() -> None:
+    payload: dict[str, list[str]] = {
+        user_id: sorted(list(groups)) for user_id, groups in USER_LDAP_GROUPS.items()
+    }
+    USERID_TO_GROUP_MAPPING_PATH.write_text(yaml.safe_dump(payload, sort_keys=True))
+
+
+@app.get("/user-groups")
+def list_user_groups(user: CurrentUser) -> dict[str, Any]:
+    enforce_request(user, "/user-groups", "GET")
+    rows: list[dict[str, Any]] = []
+    for user_id in sorted(list(USER_LDAP_GROUPS.keys())):
+        rows.append({"user_id": user_id, "groups": sorted(list(USER_LDAP_GROUPS.get(user_id, set())))})
+    return {"rows": rows}
+
+
+@app.post("/user-groups/add")
+def add_user_group(payload: UserGroupAdd, user: CurrentUser) -> dict[str, Any]:
+    enforce_request(user, "/user-groups/add", "POST")
+    user_id = payload.user_id.strip()
+    group = payload.group.strip()
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="user_id is required")
+    if not group:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="group is required")
+
+    USER_LDAP_GROUPS.setdefault(user_id, set()).add(group)
+    _write_userid_to_group_mapping()
+    return {"status": "ok"}
+
+
+@app.post("/user-groups/remove")
+def remove_user_group(payload: UserGroupRemove, user: CurrentUser) -> dict[str, Any]:
+    enforce_request(user, "/user-groups/remove", "POST")
+    user_id = payload.user_id.strip()
+    group = payload.group.strip()
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="user_id is required")
+    if not group:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="group is required")
+
+    if user_id in USER_LDAP_GROUPS:
+        USER_LDAP_GROUPS[user_id].discard(group)
+        if not USER_LDAP_GROUPS[user_id]:
+            USER_LDAP_GROUPS.pop(user_id, None)
+    _write_userid_to_group_mapping()
+    return {"status": "ok"}
 
 
 @app.get("/apps/{applicationservice_id}")
@@ -219,7 +263,7 @@ def get_applicationservice(applicationservice_id: str, user: CurrentUser) -> dic
 def list_flows(applicationservice_id: str, user: CurrentUser) -> dict[str, Any]:
     enforce_request(
         user,
-        f"/apps/{applicationservice_id}/flows",
+        f"/flows/{applicationservice_id}",
         "GET",
         applicationservice={"id": applicationservice_id},
     )
@@ -237,7 +281,7 @@ class FlowCreate(BaseModel):
 def create_flow(applicationservice_id: str, payload: FlowCreate, user: CurrentUser) -> dict[str, Any]:
     enforce_request(
         user,
-        f"/apps/{applicationservice_id}/flows",
+        f"/flows/{applicationservice_id}",
         "POST",
         applicationservice={"id": applicationservice_id},
     )

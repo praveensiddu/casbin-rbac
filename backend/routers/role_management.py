@@ -32,6 +32,12 @@ def create_role_management_router(
 ) -> APIRouter:
     router = APIRouter()
 
+    def _groups_from_user_mapping() -> set[str]:
+        groups: set[str] = set()
+        for gs in user_ldap_groups.values():
+            groups |= set(gs)
+        return groups
+
     def _write_group_doc_roles_yaml() -> None:
         out: dict[str, dict[str, list[str]]] = {}
         for group, app_map in group2appsvc_roles.items():
@@ -129,14 +135,23 @@ def create_role_management_router(
     def assign_role(payload: RoleAssignmentRequest, user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
         enforce(user, "/role-management/assign", "POST")
 
+        group = payload.group.strip()
+        if not group:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Group is required")
+        if group not in _groups_from_user_mapping():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Unknown group: must exist in userid_to_group_mapping.yaml",
+            )
+
         role = payload.role.strip()
         if role not in {"viewer", "recertify"}:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid role")
         if payload.appsvc_id not in applicationservices:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ApplicationService not found")
 
-        group2appsvc_roles.setdefault(payload.group, {})
-        group2appsvc_roles[payload.group].setdefault(payload.appsvc_id, set()).add(role)
+        group2appsvc_roles.setdefault(group, {})
+        group2appsvc_roles[group].setdefault(payload.appsvc_id, set()).add(role)
         _write_group_doc_roles_yaml()
         return {"status": "ok"}
 

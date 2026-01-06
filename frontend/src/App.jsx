@@ -78,9 +78,6 @@ export default function App() {
         <Section title="Try endpoints">
           <div className="grid">
             <button disabled={!isAuthed} onClick={() => callEndpoint('/me', 'GET')}>GET /me</button>
-            <button disabled={!isAuthed} onClick={() => callEndpoint('/data', 'GET')}>GET /data</button>
-            <button disabled={!isAuthed} onClick={() => callEndpoint('/data', 'POST')}>POST /data</button>
-            <button disabled={!isAuthed} onClick={() => callEndpoint('/admin', 'GET')}>GET /admin</button>
             <button disabled={!isAuthed} onClick={() => callEndpoint('/documents/123', 'GET')}>GET /documents/123</button>
             <button disabled={!isAuthed} onClick={() => callEndpoint('/documents/123', 'PUT')}>PUT /documents/123</button>
             <button disabled={!isAuthed} onClick={() => callEndpoint('/documents/123', 'DELETE')}>DELETE /documents/123</button>
