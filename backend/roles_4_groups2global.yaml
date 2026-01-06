@@ -2,3 +2,5 @@ architecturesysgroup:
 - viewall
 ldap-admins:
 - admin
+viewallgroup:
+- viewall

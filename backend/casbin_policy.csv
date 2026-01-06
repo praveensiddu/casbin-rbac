@@ -15,6 +15,7 @@ p, admin, /access-requests/*, (GET|POST), True
 
 p, viewall, /apps, GET, True
 p, viewall, /apps/*, GET, True
+p, viewall, /flows/*, GET, True
 
 p, user, /apps, GET, True
 p, user, /user-groups, GET, True
@@ -29,6 +30,7 @@ p, user, /access-requests/me, GET, True
 p, recertify, /apps/*, GET, True
 p, recertify, /apps/*, PUT, True
 p, recertify, /flows/*, GET, True
+p, recertify, /flows/*, POST, True
 
 p, viewer, /apps, GET, True
 p, viewer, /apps/*, GET, True

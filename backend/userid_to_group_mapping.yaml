@@ -1,6 +1,6 @@
 alice:
-- architecturesysgroup
 - ldap-admins
+- viewallgroup
 bob:
 - architecturesysgroup
 carol:
