@@ -125,14 +125,14 @@ CurrentUser = Annotated[dict[str, Any], Depends(get_current_user_context)]
 
 
 def enforce_request(
-    user: dict[str, Any], obj: str, act: str, applicationservice: dict[str, Any] | None = None
+    usercontext: dict[str, Any], obj: str, act: str, applicationservice: dict[str, Any] | None = None
 ) -> None:
-    enforce_rbac(enforcer=ENFORCER, user=user, obj=obj, act=act, applicationservice=applicationservice)
+    enforce_rbac(enforcer=ENFORCER, usercontext=usercontext, obj=obj, act=act, applicationservice=applicationservice)
 
 
 app.include_router(
     create_role_management_router(
-        enforce=lambda user, obj, act: enforce_request(user, obj, act),
+        enforce=lambda usercontext, obj, act: enforce_request(usercontext, obj, act),
         get_current_user_context=get_current_user_context,
         group_doc_roles_path=GROUP_DOC_ROLES_PATH,
         group_global_roles_path=GROUP_GLOBAL_ROLES_PATH,
@@ -145,7 +145,7 @@ app.include_router(
 
 app.include_router(
     create_access_requests_router(
-        enforce=lambda user, obj, act: enforce_request(user, obj, act),
+        enforce=lambda usercontext, obj, act: enforce_request(usercontext, obj, act),
         get_current_user_context=get_current_user_context,
         access_requests_path=ACCESS_REQUESTS_PATH,
         applicationservices=APPLICATIONSERVICES,
@@ -154,8 +154,8 @@ app.include_router(
 
 app.include_router(
     create_apps_router(
-        enforce=lambda user, obj, act, applicationservice: enforce_request(
-            user, obj, act, applicationservice=applicationservice
+        enforce=lambda usercontext, obj, act, applicationservice: enforce_request(
+            usercontext, obj, act, applicationservice=applicationservice
         ),
         get_current_user_context=get_current_user_context,
         applicationservices=APPLICATIONSERVICES,
@@ -165,7 +165,7 @@ app.include_router(
 
 app.include_router(
     create_user_groups_router(
-        enforce=lambda user, obj, act: enforce_request(user, obj, act),
+        enforce=lambda usercontext, obj, act: enforce_request(usercontext, obj, act),
         get_current_user_context=get_current_user_context,
         user_ldap_groups=USER_LDAP_GROUPS,
         userid_to_group_mapping_path=USERID_TO_GROUP_MAPPING_PATH,

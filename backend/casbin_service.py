@@ -85,16 +85,16 @@ def _start_policy_watcher(*, enforcer: casbin.Enforcer, policy_path: Path) -> No
 def enforce_rbac(
     *,
     enforcer: casbin.Enforcer,
-    user: dict[str, Any],
+    usercontext: dict[str, Any],
     obj: str,
     act: str,
     applicationservice: dict[str, Any] | None = None,
 ) -> None:
     applicationservice_ctx = applicationservice or {"id": ""}
     with _ENFORCER_LOCK:
-        allowed = enforcer.enforce(user, obj, act, applicationservice_ctx)
+        allowed = enforcer.enforce(usercontext, obj, act, applicationservice_ctx)
     if not allowed:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={"message": "Forbidden by RBAC", "roles": user.get("roles", []), "obj": obj, "act": act},
+            detail={"message": "Forbidden by RBAC", "roles": usercontext.get("roles", []), "obj": obj, "act": act},
         )
