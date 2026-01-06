@@ -105,6 +105,7 @@ def get_user_context(user_id: str) -> dict[str, Any]:
         applicationservice_id: sorted(list(r)) for applicationservice_id, r in applicationservice_roles_acc.items()
     }
 
+    # the keys in the dictionary below are referred to in casbin_model.conf
     return {
         "username": user_id,
         "groups": sorted(list(groups)),

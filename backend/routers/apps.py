@@ -22,8 +22,8 @@ def create_apps_router(
     router = APIRouter()
 
     @router.get("/apps")
-    def list_apps(user: dict[str, Any] = Depends(get_current_user_context)) -> dict[str, Any]:
-        enforce(user, "/apps", "GET", None)
+    def list_apps(user_context: dict[str, Any] = Depends(get_current_user_context)) -> dict[str, Any]:
+        enforce(user_context, "/apps", "GET", None)
         rows: list[dict[str, Any]] = []
         for applicationservice_id in sorted(list(applicationservices.keys())):
             rows.append(
@@ -35,9 +35,11 @@ def create_apps_router(
         return {"rows": rows}
 
     @router.get("/apps/{applicationservice_id}")
-    def get_applicationservice(applicationservice_id: str, user: dict[str, Any] = Depends(get_current_user_context)) -> dict[str, Any]:
+    def get_applicationservice(
+        applicationservice_id: str, user_context: dict[str, Any] = Depends(get_current_user_context)
+    ) -> dict[str, Any]:
         enforce(
-            user,
+            user_context,
             f"/apps/{applicationservice_id}",
             "GET",
             {"id": applicationservice_id},
@@ -48,13 +50,15 @@ def create_apps_router(
         return {
             "applicationservice_id": applicationservice_id,
             "content": applicationservice["content"],
-            "user": user,
+            "user": user_context,
         }
 
     @router.get("/apps/{applicationservice_id}/flows")
-    def list_flows(applicationservice_id: str, user: dict[str, Any] = Depends(get_current_user_context)) -> dict[str, Any]:
+    def list_flows(
+        applicationservice_id: str, user_context: dict[str, Any] = Depends(get_current_user_context)
+    ) -> dict[str, Any]:
         enforce(
-            user,
+            user_context,
             f"/flows/{applicationservice_id}",
             "GET",
             {"id": applicationservice_id},
@@ -67,10 +71,10 @@ def create_apps_router(
     def create_flow(
         applicationservice_id: str,
         payload: FlowCreate,
-        user: dict[str, Any] = Depends(get_current_user_context),
+        user_context: dict[str, Any] = Depends(get_current_user_context),
     ) -> dict[str, Any]:
         enforce(
-            user,
+            user_context,
             f"/flows/{applicationservice_id}",
             "POST",
             {"id": applicationservice_id},
@@ -87,27 +91,31 @@ def create_apps_router(
         return {"status": "ok", "flow": flow}
 
     @router.put("/apps/{applicationservice_id}")
-    def update_applicationservice(applicationservice_id: str, user: dict[str, Any] = Depends(get_current_user_context)) -> dict[str, Any]:
+    def update_applicationservice(
+        applicationservice_id: str, user_context: dict[str, Any] = Depends(get_current_user_context)
+    ) -> dict[str, Any]:
         enforce(
-            user,
+            user_context,
             f"/apps/{applicationservice_id}",
             "PUT",
             {"id": applicationservice_id},
         )
         if applicationservice_id not in applicationservices:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ApplicationService not found")
-        return {"applicationservice_id": applicationservice_id, "message": "Updated", "user": user}
+        return {"applicationservice_id": applicationservice_id, "message": "Updated", "user": user_context}
 
     @router.delete("/apps/{applicationservice_id}")
-    def delete_applicationservice(applicationservice_id: str, user: dict[str, Any] = Depends(get_current_user_context)) -> dict[str, Any]:
+    def delete_applicationservice(
+        applicationservice_id: str, user_context: dict[str, Any] = Depends(get_current_user_context)
+    ) -> dict[str, Any]:
         enforce(
-            user,
+            user_context,
             f"/apps/{applicationservice_id}",
             "DELETE",
             {"id": applicationservice_id},
         )
         if applicationservice_id not in applicationservices:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ApplicationService not found")
-        return {"applicationservice_id": applicationservice_id, "message": "Deleted", "user": user}
+        return {"applicationservice_id": applicationservice_id, "message": "Deleted", "user": user_context}
 
     return router
