@@ -105,11 +105,21 @@ def create_role_management_router(
         payload: GlobalRoleAssignmentRequest, user: dict[str, Any] = Depends(get_current_user)
     ) -> dict[str, Any]:
         enforce(user, "/role-management/global-roles/assign", "POST")
+
+        group = payload.group.strip()
+        if not group:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Group is required")
+        if group not in _groups_from_user_mapping():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Unknown group: must exist in userid_to_group_mapping.yaml",
+            )
+
         role = payload.role.strip()
         if role not in {"viewall"}:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid role")
 
-        roles4groups2global.setdefault(payload.group, set()).add(role)
+        roles4groups2global.setdefault(group, set()).add(role)
         _write_group_global_roles_yaml()
         return {"status": "ok"}
 
@@ -118,16 +128,26 @@ def create_role_management_router(
         payload: GlobalRoleAssignmentRequest, user: dict[str, Any] = Depends(get_current_user)
     ) -> dict[str, Any]:
         enforce(user, "/role-management/global-roles/unassign", "POST")
+
+        group = payload.group.strip()
+        if not group:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Group is required")
+        if group not in _groups_from_user_mapping():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Unknown group: must exist in userid_to_group_mapping.yaml",
+            )
+
         role = payload.role.strip()
         if role not in {"viewall"}:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid role")
 
-        roles = roles4groups2global.get(payload.group)
+        roles = roles4groups2global.get(group)
         if not roles:
             return {"status": "ok"}
         roles.discard(role)
         if not roles:
-            roles4groups2global.pop(payload.group, None)
+            roles4groups2global.pop(group, None)
         _write_group_global_roles_yaml()
         return {"status": "ok"}
 

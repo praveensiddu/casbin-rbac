@@ -1,4 +1,5 @@
 alice:
+- architecturesysgroup
 - ldap-admins
 bob:
 - architecturesysgroup

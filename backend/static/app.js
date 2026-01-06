@@ -412,6 +412,7 @@ function App() {
                     type="button"
                     disabled={!isAuthed || !selectedAppId}
                     onClick={async () => {
+                      setFlowsRows([]);
                       await loadFlows(selectedAppId);
                       setAppsView('flows');
                     }}

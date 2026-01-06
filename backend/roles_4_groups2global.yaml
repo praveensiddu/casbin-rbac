@@ -1,12 +1,4 @@
-firewallsquad:
-- viewall
-globalsecurity:
-- viewall
-group1:
-- viewall
-gs:
+architecturesysgroup:
 - viewall
 ldap-admins:
 - admin
-psiddu:
-- viewall
